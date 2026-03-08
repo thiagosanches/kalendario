@@ -20,7 +20,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ALLOWED_USERS = os.getenv('ALLOWED_USERS', '')  # Comma-separated list of user IDs (optional whitelist)
-DATA_DIR = '../data'
+
+# Data directory - use /data in Docker, ../data when running locally
+DATA_DIR = '/data' if os.path.exists('/data') else '../data'
 APPOINTMENTS_FILE = os.path.join(DATA_DIR, 'appointments.json')
 SENT_REMINDERS_FILE = os.path.join(DATA_DIR, 'sent_reminders.json')
 TEMP_DIR = 'temp_audio'
@@ -34,6 +36,7 @@ if not OPENAI_API_KEY or OPENAI_API_KEY == 'YOUR_OPENAI_API_KEY_HERE':
     OPENAI_API_KEY = None
 
 print("✅ Telegram bot token configured")
+print(f"📁 Data directory: {DATA_DIR}")
 if OPENAI_API_KEY:
     print("✅ OpenAI API key configured - voice messages enabled")
 
