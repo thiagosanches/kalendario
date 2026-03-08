@@ -2,8 +2,8 @@
 
 let currentDate = new Date();
 let appointments = [];
-let viewMode = '15days'; // 'month' or '15days'
-let startDate = new Date(); // For 15-day view
+let viewMode = '7days'; // 'month' or '7days'
+let startDate = new Date(); // For 7-day view
 
 // Initialize the application
 async function init() {
@@ -19,7 +19,7 @@ async function init() {
         if (viewMode === 'month') {
             currentDate.setMonth(currentDate.getMonth() - 1);
         } else {
-            startDate.setDate(startDate.getDate() - 15);
+            startDate.setDate(startDate.getDate() - 7);
         }
         renderView();
     });
@@ -28,7 +28,7 @@ async function init() {
         if (viewMode === 'month') {
             currentDate.setMonth(currentDate.getMonth() + 1);
         } else {
-            startDate.setDate(startDate.getDate() + 15);
+            startDate.setDate(startDate.getDate() + 7);
         }
         renderView();
     });
@@ -41,7 +41,7 @@ async function init() {
     });
     
     document.getElementById('days15ViewBtn').addEventListener('click', () => {
-        viewMode = '15days';
+        viewMode = '7days';
         startDate = new Date(); // Reset to today
         document.getElementById('days15ViewBtn').classList.add('active');
         document.getElementById('monthViewBtn').classList.remove('active');
@@ -100,7 +100,7 @@ function renderView() {
     if (viewMode === 'month') {
         renderMonthCalendar();
     } else {
-        render15DaysView();
+        render7DaysView();
     }
 }
 
@@ -228,13 +228,13 @@ function renderMonthCalendar() {
     }
 }
 
-// Render 15-day view with appointment details
-function render15DaysView() {
+// Render 7-day view with appointment details
+function render7DaysView() {
     const calendar = document.getElementById('calendar');
     const periodTitle = document.getElementById('periodTitle');
     
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 14);
+    endDate.setDate(endDate.getDate() + 6);
     
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
                         'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -243,13 +243,13 @@ function render15DaysView() {
     
     // Clear calendar
     calendar.innerHTML = '';
-    calendar.className = 'calendar-grid days15-view';
+    calendar.className = 'calendar-grid days7-view';
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Create 15 day cards
-    for (let i = 0; i < 15; i++) {
+    // Create 7 day cards
+    for (let i = 0; i < 7; i++) {
         const currentDay = new Date(startDate);
         currentDay.setDate(currentDay.getDate() + i);
         

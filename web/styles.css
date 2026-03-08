@@ -236,9 +236,9 @@ header h1 {
     grid-template-columns: repeat(7, 1fr);
 }
 
-.calendar-grid.days15-view {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+.calendar-grid.days7-view {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 15px;
 }
 
 .calendar-day-header {
@@ -666,7 +666,7 @@ header h1 {
         grid-row: 3 / 4;
     }
     
-    .calendar-grid.days15-view {
+    .calendar-grid.days7-view {
         grid-template-columns: repeat(2, 1fr);
     }
     
@@ -699,7 +699,7 @@ header h1 {
         padding: 10px;
     }
     
-    .calendar-grid.days15-view {
+    .calendar-grid.days7-view {
         grid-template-columns: 1fr;
     }
     
