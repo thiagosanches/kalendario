@@ -15,7 +15,7 @@ A complete **multi-user** system for managing doctor appointments with a Telegra
 ## Project Structure
 
 ```
-doctor-appointments/
+kalendario/
 ├── bot/                    # Telegram bot
 │   ├── bot.py             # Bot implementation
 │   └── requirements.txt   # Python dependencies
@@ -258,4 +258,3 @@ For issues or questions, please check:
 1. Console logs in the browser (F12)
 2. Bot output in the terminal
 3. File permissions on the data directory
-# kalendario
