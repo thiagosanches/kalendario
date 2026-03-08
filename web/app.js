@@ -329,7 +329,7 @@ function renderAppointmentsList() {
     });
     
     if (futureAppointments.length === 0) {
-        list.innerHTML = '<div class="no-appointments">Nenhuma consulta agendada</div>';
+        list.innerHTML = '<div class="no-appointments">Nenhum lembrete agendado</div>';
         return;
     }
     
@@ -364,7 +364,7 @@ function renderTodayReminders() {
     const todayAppointments = appointments.filter(apt => apt.date === todayStr);
     
     if (todayAppointments.length === 0) {
-        list.innerHTML = '<div class="no-reminders">Nenhuma consulta ou lembrete hoje</div>';
+        list.innerHTML = '<div class="no-reminders">Nenhum lembrete hoje</div>';
         return;
     }
     
