@@ -678,38 +678,80 @@ header h1 {
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 5px;
+    }
+    
+    .container {
+        border-radius: 10px;
+    }
+    
+    header {
+        padding: 20px 15px;
     }
     
     header h1 {
-        font-size: 1.8rem;
+        font-size: 1.5rem;
     }
     
     .current-date {
-        font-size: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .refresh-info {
+        font-size: 0.85rem;
+        gap: 10px;
     }
     
     .main-content {
-        padding: 20px;
-        gap: 20px;
+        padding: 15px;
+        gap: 15px;
     }
     
     .calendar-grid {
-        gap: 5px;
-        padding: 10px;
+        gap: 3px;
+        padding: 5px;
+    }
+    
+    .calendar-grid.month-view {
+        gap: 2px;
+        padding: 5px;
     }
     
     .calendar-grid.days7-view {
         grid-template-columns: 1fr;
     }
     
+    .calendar-day-header {
+        font-size: 0.7rem;
+        padding: 4px 2px;
+    }
+    
     .calendar-day {
-        min-height: 60px;
-        padding: 5px;
+        min-height: 40px;
+        padding: 2px;
+        font-size: 0.8rem;
     }
     
     .day-number {
-        font-size: 1rem;
+        font-size: 0.85rem;
+    }
+    
+    .appointment-indicator {
+        width: 16px;
+        height: 16px;
+        font-size: 0.65rem;
+        bottom: 2px;
+        right: 2px;
+    }
+    
+    .calendar-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    .nav-button {
+        width: 35px;
+        height: 35px;
+        font-size: 1.2rem;
     }
     
     .appointment-card {
@@ -721,12 +763,14 @@ header h1 {
     }
     
     .view-controls {
-        padding: 15px 20px 0;
+        padding: 10px 15px 0;
+        gap: 5px;
     }
     
     .view-btn {
-        padding: 10px 20px;
-        font-size: 0.9rem;
+        padding: 8px 15px;
+        font-size: 0.85rem;
+        min-height: 44px;
     }
 }
 
