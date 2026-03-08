@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Telegram Bot Service
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: kalendario-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ALLOWED_USERS=${ALLOWED_USERS}
+    volumes:
+      - ./data:/app/data
+      - bot-temp:/app/temp_audio
+    networks:
+      - kalendario-network
+    depends_on:
+      - web
+
+  # Web Application Service
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: kalendario-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - kalendario-network
+
+volumes:
+  bot-temp:
+
+networks:
+  kalendario-network:
+    driver: bridge

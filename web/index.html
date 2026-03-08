@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalendario</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kalendario - Consultas & Lembretes</h1>
+            <div class="current-date">
+                <span id="currentDate"></span>
+            </div>
+            <div class="refresh-info">
+                <span id="lastRefresh">Carregando...</span>
+                <button id="refreshBtn" class="refresh-btn" title="Recarregar dados">🔄</button>
+                <button id="darkModeToggle" class="dark-mode-btn" title="Alternar modo escuro">🌙</button>
+            </div>
+        </header>
+
+        <div class="view-controls">
+            <button id="monthViewBtn" class="view-btn active">Visão Mensal</button>
+            <button id="days15ViewBtn" class="view-btn">Próximos 15 Dias</button>
+        </div>
+
+        <div class="main-content">
+            <!-- Calendar View -->
+            <section class="calendar-section">
+                <div class="calendar-header">
+                    <button id="prevPeriod" class="nav-button">&lt;</button>
+                    <h2 id="periodTitle"></h2>
+                    <button id="nextPeriod" class="nav-button">&gt;</button>
+                </div>
+                <div class="calendar-grid" id="calendar"></div>
+            </section>
+
+            <!-- Appointments List -->
+            <section class="appointments-section">
+                <h2>Próximas Consultas</h2>
+                <div id="appointmentsList" class="appointments-list"></div>
+            </section>
+
+            <!-- Today's Reminders -->
+            <section class="reminders-section">
+                <h2>Consultas de Hoje</h2>
+                <div id="todayReminders" class="reminders-list"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

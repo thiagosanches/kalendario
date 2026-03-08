@@ -2,6 +2,8 @@
 
 A complete **multi-user** system for managing doctor appointments with a Telegram bot for adding appointments and a static web application for displaying them on phones.
 
+![alt text](image.png)
+
 ## 🌟 Key Features
 
 ✨ **Multi-User Support** - Each Telegram user has their own private appointments  
@@ -171,90 +173,7 @@ Appointments are stored in `data/appointments.json`:
 }
 ```
 
-## Customization
-
-### Changing Colors
-
-Edit `web/styles.css`:
-- Line 9-10: Background gradient
-- Line 21-22: Header gradient
-- Various `.nav-button`, `.appointment-card` styles
-
-### Auto-refresh Interval
-
-Edit `web/app.js` line 26 to change the refresh interval (currently 300000ms = 5 minutes).
-
-### Calendar Start Day
-
-To change from Sunday to Monday start, modify the calendar rendering logic in `web/app.js` around line 62.
-
-## Deployment
-
-### For Production Use
-
-1. **Bot**: Deploy on a server or cloud service (AWS, DigitalOcean, etc.)
-   ```bash
-   nohup python bot.py &
-   ```
-
-2. **Web App**: Host on any static hosting service:
-   - GitHub Pages
-   - Netlify
-   - Vercel
-   - AWS S3
-   - Your own web server (nginx, Apache)
-
-3. **Data Synchronization**: Ensure the `data/` directory is accessible by both the bot and web server. You can:
-   - Use a shared network drive
-   - Set up a simple API endpoint
-   - Use cloud storage (S3, Dropbox, Google Drive)
-
-## Troubleshooting
-
-### Bot not responding
-- Check your bot token is correct
-- Ensure the bot is running (`python bot.py`)
-- Verify network connectivity
-
-### Web app not showing appointments
-- Check the console for CORS errors
-- Ensure appointments.json exists in the data directory
-- Verify the web server is running
-- Check file paths in app.js
-
-### Appointments not updating
-- The web app refreshes every 5 minutes automatically
-- Manually refresh the page to see immediate changes
-- Check that the bot successfully saved the data
-
-## Browser Compatibility
-
-The web application works on:
-- Chrome/Edge (recommended for tablets)
-- Firefox
-- Safari
-- Modern mobile browsers
-
-## Documentation
-
-- 📖 [MULTI_USER_FEATURE.md](MULTI_USER_FEATURE.md) - Multi-user support explained
-- 🔒 [WHITELIST_FEATURE.md](WHITELIST_FEATURE.md) - User access control guide
-- 🔔 [REMINDER_NOTIFICATIONS.md](REMINDER_NOTIFICATIONS.md) - Automatic reminders guide
-- 📅 [FLEXIBLE_DATE_FEATURE.md](FLEXIBLE_DATE_FEATURE.md) - Date input formats
-- 🎤 [VOICE_SETUP.md](bot/VOICE_SETUP.md) - Voice message configuration
-- 🔄 [REFRESH_FIX.md](REFRESH_FIX.md) - Cache-busting solution
-- 🔀 [DATA_FLOW.md](DATA_FLOW.md) - How data syncs between bot and web
-- 🍓 [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md) - Deploy on Raspberry Pi
-- 🧪 [LOCAL_TESTING.md](LOCAL_TESTING.md) - Local development guide
-- ✅ [COMPLETE_CHECKLIST.md](COMPLETE_CHECKLIST.md) - Final verification
 
 ## License
 
-This project is open source and available for personal and commercial use.
-
-## Support
-
-For issues or questions, please check:
-1. Console logs in the browser (F12)
-2. Bot output in the terminal
-3. File permissions on the data directory
+MIT License - Feel free to use and modify this project for your needs!

@@ -1,0 +1,34 @@
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+*.log
+
+# Build artifacts
+dist/
+build/
+
+# Test files
+tests/
+*.test.js
+*.spec.js

@@ -1,0 +1,198 @@
+{
+  "appointments": [
+    {
+      "id": 1,
+      "date": "2026-03-10",
+      "time": "09:00",
+      "doctor": "Dra. Maria Silva",
+      "description": "Consulta de Rotina Anual",
+      "location": "Sala 101, Prédio Principal",
+      "type": "appointment",
+      "created_at": "2026-03-07T10:00:00"
+    },
+    {
+      "id": 2,
+      "date": "2026-03-10",
+      "time": "08:00",
+      "doctor": "",
+      "description": "Tomar medicamento - Losartana 50mg",
+      "location": "Em jejum",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:10:00"
+    },
+    {
+      "id": 3,
+      "date": "2026-03-12",
+      "time": "14:30",
+      "doctor": "Dr. Carlos Oliveira",
+      "description": "Limpeza Dentária",
+      "location": "Clínica Odontológica, 2º Andar",
+      "type": "appointment",
+      "created_at": "2026-03-07T10:15:00"
+    },
+    {
+      "id": 4,
+      "date": "2026-03-12",
+      "time": "20:00",
+      "doctor": "",
+      "description": "Tomar medicamento - Metformina 850mg",
+      "location": "Após o jantar",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:20:00"
+    },
+    {
+      "id": 5,
+      "date": "2026-03-15",
+      "time": "11:00",
+      "doctor": "Dra. Ana Santos",
+      "description": "Consulta de Acompanhamento",
+      "location": "Sala 205",
+      "type": "appointment",
+      "created_at": "2026-03-07T10:30:00"
+    },
+    {
+      "id": 6,
+      "date": "2026-03-15",
+      "time": "07:00",
+      "doctor": "",
+      "description": "Medir pressão arterial",
+      "location": "Anotar os valores",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:35:00"
+    },
+    {
+      "id": 7,
+      "date": "2026-03-17",
+      "time": "09:00",
+      "doctor": "",
+      "description": "Coleta de sangue para exame",
+      "location": "Laboratório São Lucas - Em jejum de 12h",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:40:00"
+    },
+    {
+      "id": 8,
+      "date": "2026-03-18",
+      "time": "16:00",
+      "doctor": "Dr. João Ferreira",
+      "description": "Revisão de Exames Laboratoriais",
+      "location": "Sala 303",
+      "type": "appointment",
+      "created_at": "2026-03-07T10:45:00"
+    },
+    {
+      "id": 9,
+      "date": "2026-03-20",
+      "time": "08:00",
+      "doctor": "",
+      "description": "Tomar medicamento - Sinvastatina 20mg",
+      "location": "Antes do café da manhã",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:50:00"
+    },
+    {
+      "id": 10,
+      "date": "2026-03-22",
+      "time": "15:00",
+      "doctor": "",
+      "description": "Exercícios físicos - Caminhada 30min",
+      "location": "Parque Municipal",
+      "type": "reminder",
+      "created_at": "2026-03-07T10:55:00"
+    },
+    {
+      "id": 11,
+      "date": "2033-03-15",
+      "time": "14:30",
+      "doctor": "Dr. Ricardo",
+      "description": "",
+      "location": "",
+      "type": "appointment",
+      "created_at": "2026-03-07T21:36:54.076198"
+    },
+    {
+      "id": 12,
+      "date": "2024-03-15",
+      "time": "14:30",
+      "doctor": "Dr. Minini",
+      "description": "",
+      "location": "",
+      "type": "appointment",
+      "created_at": "2026-03-07T21:42:24.038089"
+    },
+    {
+      "id": 13,
+      "date": "2024-03-13",
+      "time": "13:30",
+      "doctor": "",
+      "description": "Marcar dentista",
+      "location": "",
+      "type": "appointment",
+      "created_at": "2026-03-07T21:56:05.253615"
+    },
+    {
+      "id": 14,
+      "date": "2026-03-13",
+      "time": "21:00",
+      "doctor": "Dra. Adriana",
+      "description": "Dentista",
+      "location": "",
+      "type": "appointment",
+      "created_at": "2026-03-07T21:58:53.423338"
+    },
+    {
+      "id": 15,
+      "date": "2026-03-13",
+      "time": "23:00",
+      "doctor": "",
+      "description": "Jantarzinho com a Juliana",
+      "location": "",
+      "type": "reminder",
+      "created_at": "2026-03-07T21:59:54.810388"
+    },
+    {
+      "id": 16,
+      "user_id": 112559128,
+      "date": "2026-03-07",
+      "time": "10:13",
+      "doctor": "",
+      "description": "Jantar",
+      "location": "",
+      "type": "reminder",
+      "created_at": "2026-03-07T22:11:47.968367"
+    },
+    {
+      "id": 17,
+      "user_id": 112559128,
+      "date": "2026-03-07",
+      "time": "22:25",
+      "doctor": "",
+      "description": "Jantar",
+      "location": "",
+      "type": "reminder",
+      "created_at": "2026-03-07T22:15:38.049663"
+    },
+    {
+      "id": 19,
+      "user_id": 112559128,
+      "date": "2026-03-07",
+      "time": "23:00",
+      "doctor": "",
+      "description": "Test reminder",
+      "location": "",
+      "type": "reminder",
+      "created_at": "2026-03-07T22:44:20.272047"
+    },
+    {
+      "id": 20,
+      "user_id": 112559128,
+      "date": "2026-03-07",
+      "time": "11:30",
+      "doctor": "",
+      "description": "Jantar",
+      "location": "",
+      "type": "reminder",
+      "created_at": "2026-03-07T22:44:55.348034"
+    }
+  ]
+}

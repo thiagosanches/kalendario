@@ -1,0 +1,746 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-gradient-start: #667eea;
+    --bg-gradient-end: #764ba2;
+    --container-bg: white;
+    --text-primary: #333;
+    --text-secondary: #666;
+    --text-tertiary: #999;
+    --calendar-bg: #f8f9fa;
+    --card-bg: white;
+    --border-color: #f0f0f0;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode {
+    --bg-gradient-start: #1a1a2e;
+    --bg-gradient-end: #16213e;
+    --container-bg: #0f1624;
+    --text-primary: #e4e4e4;
+    --text-secondary: #b0b0b0;
+    --text-tertiary: #808080;
+    --calendar-bg: #1a1f2e;
+    --card-bg: #1e2433;
+    --border-color: #2d3548;
+    --shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    min-height: 100vh;
+    padding: 20px;
+    transition: background 0.3s ease;
+    font-size: 18px; /* Increased base font size for elderly users */
+    line-height: 1.6; /* Better readability */
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--container-bg);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition: background 0.3s ease;
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px 40px;
+    text-align: center;
+    position: relative;
+}
+
+header h1 {
+    font-size: 3rem; /* Increased from 2.5rem */
+    margin-bottom: 15px;
+    font-weight: 700; /* Bolder for better visibility */
+}
+
+.current-date {
+    font-size: 1.4rem; /* Increased from 1.2rem */
+    opacity: 0.95; /* Better contrast */
+    font-weight: 500;
+}
+
+.refresh-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px; /* Increased from 15px */
+    margin-top: 20px; /* Increased from 15px */
+    font-size: 1.1rem; /* Increased from 0.9rem */
+    opacity: 0.95; /* Better contrast */
+    font-weight: 500;
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    width: 48px; /* Increased from 36px */
+    height: 48px; /* Increased from 36px */
+    border-radius: 50%;
+    font-size: 1.4rem; /* Increased from 1.2rem */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1);
+}
+
+.refresh-btn:active {
+    transform: scale(0.95);
+}
+
+.dark-mode-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    width: 48px; /* Increased from 36px */
+    height: 48px; /* Increased from 36px */
+    border-radius: 50%;
+    font-size: 1.4rem; /* Increased from 1.2rem */
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dark-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1);
+}
+
+.dark-mode-btn:active {
+    transform: scale(0.95);
+}
+
+.refresh-btn.refreshing {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* View Controls */
+.view-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 40px 0;
+}
+
+.view-btn {
+    background: white;
+    color: #667eea;
+    border: 2px solid #667eea;
+    padding: 16px 40px; /* Increased from 12px 30px */
+    border-radius: 25px;
+    font-size: 1.2rem; /* Increased from 1rem */
+    font-weight: 700; /* Increased from 600 */
+    cursor: pointer;
+    transition: all 0.3s;
+    min-height: 56px; /* Minimum touch target for elderly users */
+}
+
+.view-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.view-btn.active {
+    background: #667eea;
+    color: white;
+}
+
+/* Main Content */
+.main-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Calendar takes 2/3, sidebar takes 1/3 */
+    grid-template-rows: auto auto; /* Two rows */
+    gap: 30px;
+    padding: 40px;
+}
+
+/* Calendar Section */
+.calendar-section {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header h2 {
+    font-size: 2.2rem; /* Increased from 1.8rem */
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+    font-weight: 700;
+}
+
+.nav-button {
+    background: #667eea;
+    color: white;
+    border: none;
+    width: 50px; /* Increased from 40px */
+    height: 50px; /* Increased from 40px */
+    border-radius: 50%;
+    font-size: 1.8rem; /* Increased from 1.5rem */
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 700;
+}
+
+.nav-button:hover {
+    background: #764ba2;
+    transform: scale(1.1);
+}
+
+.calendar-grid {
+    display: grid;
+    gap: 10px;
+    background: var(--calendar-bg);
+    padding: 20px;
+    border-radius: 15px;
+    transition: background 0.3s ease;
+}
+
+.calendar-grid.month-view {
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-grid.days15-view {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.calendar-day-header {
+    text-align: center;
+    font-weight: bold;
+    color: #667eea;
+    padding: 12px; /* Increased from 10px */
+    font-size: 1.3rem; /* Increased from 1.1rem */
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px; /* Increased from 10px */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    min-height: 90px; /* Increased from 80px */
+}
+
+.calendar-day:hover:not(.empty) {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-day.empty {
+    background: transparent;
+    cursor: default;
+}
+
+.day-number {
+    font-size: 1.6rem; /* Increased from 1.3rem */
+    font-weight: 700; /* Increased from 600 */
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+}
+
+.calendar-day.today {
+    background: #667eea;
+    color: white;
+}
+
+.calendar-day.today .day-number {
+    color: white;
+}
+
+.calendar-day.has-appointment {
+    border: 2px solid #667eea;
+}
+
+.appointment-indicator {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #ff6b6b;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Right Column */
+.appointments-section,
+.reminders-section {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+}
+
+/* Appointments section below calendar */
+.appointments-section {
+    grid-column: 1 / 3; /* Span full width */
+    grid-row: 2 / 3; /* Second row */
+}
+
+.appointments-section h2,
+.reminders-section h2 {
+    font-size: 1.8rem; /* Keep same */
+    color: var(--text-primary);
+    margin-bottom: 15px; /* Reduced from 20px */
+    transition: color 0.3s ease;
+    font-weight: 700;
+}
+
+.appointments-list,
+.reminders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Reduced from 15px */
+    max-width: 100%; /* Prevent overflow */
+    overflow: hidden; /* Hide overflow */
+}
+
+/* Make appointments list horizontal for better space usage */
+.appointments-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* Responsive grid */
+    gap: 20px;
+}
+
+/* Appointment Card */
+.appointment-card {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 15px; /* Reduced from 20px */
+    display: flex;
+    gap: 12px; /* Reduced from 15px */
+    transition: all 0.3s;
+    box-shadow: 0 5px 15px rgba(17, 153, 142, 0.3);
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.appointment-card.reminder-card-style {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 5px 15px rgba(245, 87, 108, 0.3);
+}
+
+.appointment-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(17, 153, 142, 0.4);
+}
+
+.appointment-card.reminder-card-style:hover {
+    box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+}
+
+.appointment-date {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 12px; /* Reduced from 15px */
+    text-align: center;
+    min-width: 95px; /* Reduced from 100px */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.date-large {
+    font-size: 1.1rem; /* Keep same */
+    font-weight: 700;
+    margin-bottom: 4px; /* Reduced from 5px */
+}
+
+.time-large {
+    font-size: 1.6rem; /* Keep same */
+    font-weight: bold;
+}
+
+.appointment-details {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap properly */
+    overflow-wrap: break-word; /* Break long words */
+}
+
+.appointment-doctor {
+    font-size: 1.4rem; /* Keep same */
+    font-weight: bold;
+    margin-bottom: 4px; /* Reduced from 6px */
+    line-height: 1.3;
+}
+
+.appointment-username {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 6px;
+    opacity: 0.85;
+    transition: color 0.3s ease;
+}
+
+.appointment-description {
+    font-size: 1.1rem; /* Keep same */
+    opacity: 0.95;
+    margin-bottom: 4px; /* Reduced from 6px */
+    line-height: 1.4;
+}
+
+.appointment-location {
+    font-size: 1rem; /* Keep same */
+    opacity: 0.9;
+    margin-top: 4px; /* Reduced from 6px */
+}
+
+/* Reminder Card */
+.reminder-card {
+    background: var(--card-bg);
+    border-left: 4px solid #667eea;
+    border-radius: 10px;
+    padding: 12px; /* Reduced from 15px */
+    display: flex;
+    gap: 12px; /* Reduced from 15px */
+    transition: all 0.3s;
+    flex-wrap: wrap; /* Allow wrapping */
+    max-width: 100%; /* Prevent overflow */
+}
+
+.reminder-card.reminder-type {
+    border-left: 4px solid #f5576c;
+}
+
+.reminder-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.reminder-time {
+    background: #667eea;
+    color: white;
+    border-radius: 8px;
+    padding: 8px 12px; /* Reduced from 10px 15px */
+    font-size: 1.3rem; /* Keep same */
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 85px; /* Reduced from 90px */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.reminder-card.reminder-type .reminder-time {
+    background: #f5576c;
+}
+
+.reminder-details {
+    flex: 1;
+    min-width: 0; /* Allow text to wrap properly */
+    overflow-wrap: break-word; /* Break long words */
+}
+
+.reminder-doctor {
+    font-size: 1.2rem; /* Keep same */
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 4px; /* Reduced from 6px */
+    transition: color 0.3s ease;
+    line-height: 1.3;
+}
+
+.reminder-username {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 4px;
+    opacity: 0.85;
+    transition: color 0.3s ease;
+}
+
+.reminder-description {
+    font-size: 1.05rem; /* Keep same */
+    color: var(--text-secondary);
+    margin-bottom: 4px; /* Reduced from 6px */
+    transition: color 0.3s ease;
+    line-height: 1.4;
+}
+
+.reminder-location {
+    font-size: 0.95rem; /* Keep same */
+    color: var(--text-tertiary);
+    transition: color 0.3s ease;
+}
+
+/* Empty States */
+.no-appointments,
+.no-reminders {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-tertiary);
+    font-size: 1.3rem; /* Increased from 1.1rem */
+    transition: color 0.3s ease;
+    line-height: 1.6;
+}
+
+/* 15-Day View Styles */
+.day-card {
+    background: var(--card-bg);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    transition: all 0.3s;
+}
+
+.day-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.day-card.today {
+    border: 3px solid #667eea;
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+}
+
+.day-card-header {
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    transition: border-color 0.3s ease;
+}
+
+.day-card-date {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.day-card-day {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #667eea;
+    flex: 1;
+}
+
+.day-card-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+}
+
+.day-card-month {
+    font-size: 1rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    transition: color 0.3s ease;
+}
+
+.day-card.today .day-card-number {
+    color: #667eea;
+}
+
+.day-card-appointments {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.day-appointment {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    border-radius: 10px;
+    padding: 15px;
+    color: white;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.day-appointment.reminder {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.day-apt-time {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    min-width: 75px;
+    text-align: center;
+}
+
+.day-apt-details {
+    flex: 1;
+}
+
+.day-apt-doctor {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.day-apt-username {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 4px;
+    opacity: 0.85;
+    transition: color 0.3s ease;
+}
+
+.day-apt-desc {
+    font-size: 0.95rem;
+    opacity: 0.95;
+    margin-bottom: 4px;
+}
+
+.day-apt-location {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.no-appointments-day {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    transition: color 0.3s ease;
+}
+
+/* Tablet Optimizations */
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto; /* Three rows */
+    }
+    
+    .calendar-section {
+        grid-column: 1 / 2;
+        grid-row: 1 / 2;
+    }
+    
+    .appointments-section {
+        grid-column: 1 / 2;
+        grid-row: 2 / 3;
+    }
+    
+    .reminders-section {
+        grid-column: 1 / 2;
+        grid-row: 3 / 4;
+    }
+    
+    .calendar-grid.days15-view {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .appointments-list {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .current-date {
+        font-size: 1rem;
+    }
+    
+    .main-content {
+        padding: 20px;
+        gap: 20px;
+    }
+    
+    .calendar-grid {
+        gap: 5px;
+        padding: 10px;
+    }
+    
+    .calendar-grid.days15-view {
+        grid-template-columns: 1fr;
+    }
+    
+    .calendar-day {
+        min-height: 60px;
+        padding: 5px;
+    }
+    
+    .day-number {
+        font-size: 1rem;
+    }
+    
+    .appointment-card {
+        flex-direction: column;
+    }
+    
+    .appointment-date {
+        min-width: auto;
+    }
+    
+    .view-controls {
+        padding: 15px 20px 0;
+    }
+    
+    .view-btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Landscape Tablet Optimization */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .main-content {
+        grid-template-columns: 1.5fr 1fr;
+    }
+    
+    .calendar-day {
+        min-height: 70px;
+    }
+}
