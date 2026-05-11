@@ -13,6 +13,12 @@ function formatDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Resolve display title: prefer doctor field (legacy name for event title),
+// fall back to description so old entries without a doctor field still show something.
+function getTitle(apt) {
+    return apt.doctor || apt.description || '';
+}
+
 // Add n months to a date, clamping to end of month (mirrors Python _add_months)
 function addMonthsJS(date, n) {
     const d = new Date(date);
@@ -287,7 +293,7 @@ function renderMonthCalendar() {
         if (dayAppointments.length > 0) {
             dayCell.classList.add('has-appointment');
             if (hasRecurring) dayCell.classList.add('has-recurring');
-            dayCell.title = dayAppointments.map(apt => `${apt.time} - ${apt.doctor || apt.description}${apt._recurring ? ' 🔁' : ''}`).join('\n');
+            dayCell.title = dayAppointments.map(apt => `${apt.time} - ${getTitle(apt)}${apt._recurring ? ' 🔁' : ''}`).join('\n');
         }
         
         calendar.appendChild(dayCell);
@@ -362,8 +368,8 @@ function render7DaysView() {
                     <div class="day-apt-time">${icon} ${apt.time}</div>
                     <div class="day-apt-details">
                         ${recurBadge}
-                        ${apt.doctor ? `<div class="day-apt-doctor">${apt.doctor}</div>` : ''}
-                        <div class="day-apt-desc">${apt.description}</div>
+                        ${getTitle(apt) ? `<div class="day-apt-doctor">${getTitle(apt)}</div>` : ''}
+                        ${apt.description && apt.description !== getTitle(apt) ? `<div class="day-apt-desc">${apt.description}</div>` : ''}
                         ${apt.location ? `<div class="day-apt-location">📍 ${apt.location}</div>` : ''}
                     </div>
                 </div>
@@ -448,8 +454,8 @@ function renderAppointmentsList() {
                 </div>
                 <div class="appointment-details">
                     ${recurBadge}
-                    ${apt.doctor ? `<div class="appointment-doctor">${apt.doctor}</div>` : ''}
-                    <div class="appointment-description">${icon} ${apt.description}</div>
+                    ${getTitle(apt) ? `<div class="appointment-doctor">${getTitle(apt)}</div>` : ''}
+                    ${apt.description && apt.description !== getTitle(apt) ? `<div class="appointment-description">${icon} ${apt.description}</div>` : `<div class="appointment-description">${icon}</div>`}
                     ${apt.location ? `<div class="appointment-location">📍 ${apt.location}</div>` : ''}
                 </div>
             </div>
@@ -491,8 +497,8 @@ function renderTodayReminders() {
             <div class="reminder-time">${icon} ${apt.time}</div>
             <div class="reminder-details">
                 ${recurBadge}
-                ${apt.doctor ? `<div class="reminder-doctor">${apt.doctor}</div>` : ''}
-                <div class="reminder-description">${apt.description}</div>
+                ${getTitle(apt) ? `<div class="reminder-doctor">${getTitle(apt)}</div>` : ''}
+                ${apt.description && apt.description !== getTitle(apt) ? `<div class="reminder-description">${apt.description}</div>` : ''}
                 ${apt.location ? `<div class="reminder-location">${apt.location}</div>` : ''}
             </div>
         </div>
