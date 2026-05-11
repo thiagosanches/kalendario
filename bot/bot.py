@@ -741,27 +741,26 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         now = datetime.now()
-        # Build a flat list of (occurrence_datetime, apt, occurrence_date_str)
-        rows = []
-        for apt in user_appointments:
-            for occ_date, occ_time in generate_occurrences(apt, from_dt=now):
-                occ_dt = datetime.strptime(f"{occ_date} {occ_time}", '%Y-%m-%d %H:%M')
-                rows.append((occ_dt, apt, occ_date))
+        # Show each appointment/reminder as a single entry (no expansion)
+        one_time = [apt for apt in user_appointments if not apt.get('recurrence')]
+        recurring = [apt for apt in user_appointments if apt.get('recurrence')]
 
-        if not rows:
+        # Sort one-time entries by date/time; filter out past ones
+        future_one_time = sorted(
+            [apt for apt in one_time if datetime.strptime(f"{apt['date']} {apt['time']}", '%Y-%m-%d %H:%M') >= now],
+            key=lambda a: datetime.strptime(f"{a['date']} {a['time']}", '%Y-%m-%d %H:%M')
+        )
+
+        if not future_one_time and not recurring:
             await update.message.reply_text("Sem compromissos futuros.")
             return
 
-        rows.sort(key=lambda x: x[0])
-        # Show next 20 occurrences to avoid Telegram message length limits
-        rows = rows[:20]
-
         message = "📋 Suas Consultas e Lembretes:\n\n"
-        for occ_dt, apt, occ_date in rows:
+
+        for apt in future_one_time:
             item_type = "🏥 Consulta" if apt.get('type') == 'appointment' else "⏰ Lembrete"
-            recur_tag = f" 🔁{FREQ_LABELS.get(apt['recurrence'], '')}" if apt.get('recurrence') else ""
-            message += f"{item_type}{recur_tag} - ID: {apt['id']}\n"
-            message += f"Data: {occ_date} às {apt['time']}\n"
+            message += f"{item_type} - ID: {apt['id']}\n"
+            message += f"Data: {apt['date']} às {apt['time']}\n"
             if apt.get('doctor'):
                 message += f"Médico: {apt['doctor']}\n"
             message += f"Descrição: {apt['description']}\n"
@@ -769,8 +768,21 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
             message += "\n"
 
+        if recurring:
+            message += "🔁 Eventos Recorrentes:\n\n"
+            for apt in sorted(recurring, key=lambda a: a['id']):
+                freq_label = FREQ_LABELS.get(apt['recurrence'], apt['recurrence'])
+                message += f"🔁 {freq_label} - ID: {apt['id']}\n"
+                message += f"Início: {apt['date']} às {apt['time']}\n"
+                if apt.get('doctor'):
+                    message += f"Médico: {apt['doctor']}\n"
+                message += f"Descrição: {apt['description']}\n"
+                if apt.get('location'):
+                    message += f"Local: {apt['location']}\n"
+                message += "\n"
+
         await update.message.reply_text(message)
-        print(f"✅ List sent to user {user_id} ({len(rows)} items)")
+        print(f"✅ List sent to user {user_id} ({len(future_one_time)} one-time, {len(recurring)} recurring)")
 
     except Exception as e:
         print(f"❌ Exception in list_appointments for user {update.effective_user.id}: {e}")
