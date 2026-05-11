@@ -1,17 +1,17 @@
 # Kalendario
 
-A complete **multi-user** system for managing doctor appointments with a Telegram bot for adding appointments and a static web application for displaying them on phones.
+A **multi-user event scheduler** with a Telegram bot for managing events and a static web app for viewing them on any device.
 
 ![alt text](image.png)
 
 ## 🌟 Key Features
 
-✨ **Multi-User Support** - Each Telegram user has their own private appointments  
+✨ **Multi-User Support** - Each Telegram user has their own private events  
 🔒 **User Whitelist** - Optional access control to restrict who can use the bot  
-🔔 **Automatic Reminders** - Get notified 24h and 2h before each appointment  
-🎤 **Voice Messages** - Add appointments by speaking (powered by OpenAI Whisper)  
-� **Recurring Events** - Schedule weekly, biweekly, monthly, or yearly series  
-📱 **Telegram Bot** - Manage appointments from anywhere  
+🔔 **Automatic Reminders** - Get notified 24h and 2h before each event  
+🎤 **Voice Messages** - Add events by speaking (powered by OpenAI Whisper)  
+🔁 **Recurring Events** - Schedule weekly, biweekly, monthly, or yearly series  
+📱 **Telegram Bot** - Manage events from anywhere  
 🖥️ **Web Dashboard** - Beautiful calendar view optimized for tablets  
 🔄 **Auto-Sync** - Bot and web share the same data instantly  
 
@@ -34,23 +34,23 @@ kalendario/
 ## Features
 
 ### Web Application
-- 📅 Interactive calendar view with appointment indicators
+- 📅 Interactive calendar view with event indicators
 - 🔁 Recurring events expanded and shown in all views
-- 📋 Upcoming appointments list with details (6-month window)
+- 📋 Events list scoped to the current viewed month
 - ⏰ Today's reminders section
 - 📱 Responsive design optimized for tablets
 - 🔄 Auto-refresh every 2 minutes with cache-busting
-- 🎨 Color-coded by type: appointments (green), reminders (pink/red), recurring (amber/purple)
+- 🎨 Color-coded by type: events (green), reminders (pink/red), recurring (amber/purple)
 
 ### Telegram Bot
-- ➕ Add appointments and reminders via text commands
-- 🔁 Add recurring appointments via `/addrec` or voice message
-- 🎤 Add appointments via voice messages (OpenAI Whisper)
+- ➕ Add events and reminders via text commands
+- 🔁 Add recurring events via `/addrec` or voice message
+- 🎤 Add events via voice messages (OpenAI Whisper)
 - 📝 Flexible date input (accepts dates without year)
-- 📋 List your own appointments (filtered by user, recurring expanded)
-- ❌ Delete appointments by ID; `/delrec` removes an entire recurring series
+- 📋 List your own events (filtered by user)
+- ❌ Delete events by ID; `/delrec` removes an entire recurring series
 - 🔔 **Automatic reminder notifications** (24h and 2h before each occurrence)
-- 👥 **Multi-user support** - each user has private appointments
+- 👥 **Multi-user support** - each user has private events
 - 🔒 **Optional whitelist** - restrict access to specific users
 - 💾 Persistent JSON storage
 
@@ -114,8 +114,8 @@ python3 -m pytest test_recurring.py -v
 | Command | Description |
 |---|---|
 | `/start` | Welcome message |
-| `/add DATE TIME \| DOCTOR \| DESCRIPTION \| LOCATION` | Add a one-time appointment |
-| `/addrec DATE TIME \| FREQ \| DOCTOR \| DESCRIPTION \| LOCATION` | Add a recurring appointment |
+| `/add DATE TIME \| TITLE \| DESCRIPTION \| LOCATION` | Add a one-time event |
+| `/addrec DATE TIME \| FREQ \| TITLE \| DESCRIPTION \| LOCATION` | Add a recurring event |
 | `/list` | List your upcoming appointments |
 | `/delete ID` | Delete a one-time appointment |
 | `/delrec ID` | Delete an entire recurring series |
@@ -126,20 +126,20 @@ python3 -m pytest test_recurring.py -v
 ### Example Usage
 
 ```
-# One-time appointment
-/add 2026-06-10 09:00 | Dr. Sarah Johnson | Annual Physical | Room 101
+# One-time event
+/add 2026-06-10 09:00 | Reunião de planejamento | Pauta Q3 | Sala 101
 
-# Weekly recurring appointment
-/addrec 2026-06-01 08:00 | semanal | Dr. Chen | Fisioterapia | Clínica Norte
+# Weekly recurring event
+/addrec 2026-06-01 08:00 | semanal | Academia | Treino funcional | Parque
 
-# List all (recurring series are expanded to show upcoming occurrences)
+# List all (recurring series shown as single rule)
 /list
 
 # Remove the recurring series with ID 3
 /delrec 3
 ```
 
-**Voice messages** are also supported — just send a voice note describing the appointment (including frequency words like "toda semana" or "todo mês" for recurring events).
+**Voice messages** are also supported — just send a voice note describing the event (including frequency words like "toda semana" or "todo mês" for recurring events).
 
 ## JSON Data Format
 
@@ -152,9 +152,9 @@ Appointments are stored in `data/appointments.json`:
       "id": 1,
       "date": "2026-06-10",
       "time": "09:00",
-      "doctor": "Dr. Sarah Johnson",
-      "description": "Annual Physical Checkup",
-      "location": "Room 101",
+      "doctor": "Reunião de planejamento",
+      "description": "Pauta Q3",
+      "location": "Sala 101",
       "type": "appointment",
       "created_at": "2026-05-11T10:00:00"
     },
@@ -162,9 +162,9 @@ Appointments are stored in `data/appointments.json`:
       "id": 2,
       "date": "2026-06-01",
       "time": "08:00",
-      "doctor": "Dr. Chen",
-      "description": "Fisioterapia",
-      "location": "Clínica Norte",
+      "doctor": "Academia",
+      "description": "Treino funcional",
+      "location": "Parque",
       "recurrence": "weekly",
       "type": "appointment",
       "created_at": "2026-05-11T10:05:00"
@@ -174,6 +174,8 @@ Appointments are stored in `data/appointments.json`:
 ```
 
 Recurring entries store a single rule (one JSON object per series). The bot and web frontend both expand the rule into concrete occurrences on the fly. Reminders are tracked per-occurrence so no occurrence is notified twice.
+
+> Note: the `doctor` field is a legacy name kept for backwards compatibility — it holds the event title.
 
 ## License
 

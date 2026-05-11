@@ -1,4 +1,4 @@
-// Doctor Appointment Calendar Application
+// Kalendario - Event Scheduler
 
 let currentDate = new Date();
 let appointments = [];
@@ -349,7 +349,7 @@ function render7DaysView() {
                 const isRecurring = apt._recurring;
                 const cssClass = isRecurring ? 'day-appointment recurring'
                     : (isReminder ? 'day-appointment reminder' : 'day-appointment');
-                const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+                const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
                 const recurBadge = isRecurring
                     ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
                     : '';
@@ -367,7 +367,7 @@ function render7DaysView() {
             `;
             }).join('');
         } else {
-            appointmentsHTML = '<div class="no-appointments-day">Sem consultas ou lembretes</div>';
+            appointmentsHTML = '<div class="no-appointments-day">Sem eventos ou lembretes</div>';
         }
         
         dayCard.innerHTML = `
@@ -432,7 +432,7 @@ function renderAppointmentsList() {
         const isRecurring = apt._recurring;
         const cardClass = isRecurring ? 'appointment-card recurring-card'
             : (isReminder ? 'appointment-card reminder-card-style' : 'appointment-card');
-        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
         const recurBadge = isRecurring
             ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
             : '';
@@ -476,7 +476,7 @@ function renderTodayReminders() {
     list.innerHTML = todayAppointments.map(apt => {
         const isReminder = apt.type === 'reminder';
         const isRecurring = apt._recurring;
-        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
         const cardClass = isRecurring ? 'reminder-card recurring'
             : (isReminder ? 'reminder-card reminder-type' : 'reminder-card');
         const recurBadge = isRecurring

@@ -325,35 +325,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"🚀 /start command received from user {user_id} ({user_name})")
     
     welcome_message = f"""
-Bem-vindo ao Kalendario, {user_name}! 🏥
+Bem-vindo ao Kalendario, {user_name}! 📅
 
 👤 Seu User ID: {user_id}
 
 ✨ Recursos Multi-Usuário:
-• Cada usuário tem seus próprios compromissos
+• Cada usuário tem seus próprios eventos
 • Lembretes são enviados automaticamente apenas para você
-• Suas consultas são privadas e independentes
+• Seus eventos são privados e independentes
 
 Comandos:
-/add - Adicionar uma nova consulta
-/reminder - Adicionar um lembrete (medicamento, exame, etc.)
-/addrec - Adicionar compromisso recorrente
-/list - Listar todas as suas consultas e lembretes
-/delete - Excluir uma consulta/lembrete por ID
+/add - Adicionar um novo evento
+/reminder - Adicionar um lembrete
+/addrec - Adicionar evento recorrente
+/list - Listar todos os seus eventos e lembretes
+/delete - Excluir um evento/lembrete por ID
 /delrec - Excluir uma série recorrente por ID
 /test - Testar se o bot está enviando mensagens
 /help - Mostrar esta mensagem de ajuda
 
 📝 Comandos de Texto:
-Para adicionar uma consulta:
-/add 15/03 14:30 | Dr. Silva | Consulta Geral | Sala 205
+Para adicionar um evento:
+/add 15/03 14:30 | Reunião de equipe | Sala 205
 ou
-/add 2026-03-15 14:30 | Dr. Silva | Consulta Geral | Sala 205
+/add 2026-03-15 14:30 | Reunião de equipe | Sala 205
 
 Para adicionar um lembrete:
-/reminder 16/03 08:00 | Tomar medicamento - Losartana 50mg | Em jejum
+/reminder 16/03 08:00 | Ligar para o banco | Trazer documentos
 
-Formato consulta: /add DATA HORA | MÉDICO | DESCRIÇÃO | LOCAL
+Formato evento: /add DATA HORA | TÍTULO | DESCRIÇÃO | LOCAL
 Formato lembrete: /reminder DATA HORA | DESCRIÇÃO | OBSERVAÇÃO
 
 💡 DICA: Você não precisa informar o ano! 
@@ -361,15 +361,15 @@ Formato lembrete: /reminder DATA HORA | DESCRIÇÃO | OBSERVAÇÃO
 
 🎤 Mensagens de Voz:
 Você também pode enviar mensagens de voz! Basta falar algo como:
-"Consulta com Dr. Silva no dia 15 de março às 14h30 na sala 205"
-"Lembrete para tomar remédio amanhã às 8 da manhã"
+"Reunião com o cliente na sexta às 14h30 na sala 3"
+"Lembrete para ligar para o banco amanhã às 8 da manhã"
 
 O bot vai transcrever e adicionar automaticamente!
 
 🔔 Lembretes Automáticos:
 Você receberá notificações automáticas:
-• 24 horas antes de cada compromisso
-• 2 horas antes de cada compromisso
+• 24 horas antes de cada evento
+• 2 horas antes de cada evento
     """
     
     try:
@@ -398,8 +398,8 @@ async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not text:
             current_year = datetime.now().year
             await update.message.reply_text(
-                f"Por favor, forneça os detalhes da consulta:\n"
-                f"/add 15/03 14:30 | Dr. Silva | Consulta Geral | Sala 205\n\n"
+                f"Por favor, forneça os detalhes do evento:\n"
+                f"/add 15/03 14:30 | Reunião de equipe | Sala 205\n\n"
                 f"💡 Ano atual é {current_year}, não precisa informar!"
             )
             return
@@ -409,8 +409,8 @@ async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(parts) < 2:
             await update.message.reply_text(
                 "Formato inválido. Use:\n"
-                "/add DATA HORA | MÉDICO | DESCRIÇÃO | LOCAL\n\n"
-                "Exemplo: /add 15/03 14:30 | Dr. Silva | Consulta | Sala 205"
+                "/add DATA HORA | TÍTULO | DESCRIÇÃO | LOCAL\n\n"
+                "Exemplo: /add 15/03 14:30 | Reunião | Pauta mensal | Sala 3"
             )
             return
         
@@ -429,8 +429,8 @@ async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Validate time format
         datetime.strptime(time_str, '%H:%M')
         
-        doctor = parts[1] if len(parts) > 1 else "Médico Desconhecido"
-        description = parts[2] if len(parts) > 2 else "Consulta"
+        doctor = parts[1] if len(parts) > 1 else ""
+        description = parts[2] if len(parts) > 2 else "Evento"
         location = parts[3] if len(parts) > 3 else ""
         
         # Load existing appointments
@@ -460,16 +460,16 @@ async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
         date_display = date_obj.strftime('%d/%m/%Y')
         
-        print(f"✅ Appointment saved: ID {appointment_id}, Date: {date_display} {time_str}, Doctor: {doctor}")
+        print(f"✅ Appointment saved: ID {appointment_id}, Date: {date_display} {time_str}, Title: {doctor}")
         
         try:
             await update.message.reply_text(
-                f"✅ Consulta adicionada com sucesso!\n"
+                f"✅ Evento adicionado com sucesso!\n"
                 f"ID: {appointment_id}\n"
                 f"Data: {date_display} às {time_str}\n"
-                f"Médico: {doctor}\n"
-                f"Descrição: {description}\n"
-                f"Local: {location}"
+                + (f"Título: {doctor}\n" if doctor else "")
+                + f"Descrição: {description}\n"
+                + (f"Local: {location}" if location else "")
             )
             print(f"✅ Confirmation message sent successfully for appointment ID {appointment_id}")
         except Exception as reply_error:
@@ -489,7 +489,7 @@ async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Erro: {str(e)}"
         )
     except Exception as e:
-        await update.message.reply_text(f"❌ Erro ao adicionar consulta: {str(e)}")
+        await update.message.reply_text(f"❌ Erro ao adicionar evento: {str(e)}")
 
 async def add_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adiciona um novo lembrete"""
@@ -612,9 +612,9 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.replace('/addrec', '').strip()
     if not text:
         await update.message.reply_text(
-            "Formato: /addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL\n\n"
+            "Formato: /addrec DATA HORA | FREQ | TÍTULO | DESCRIÇÃO | LOCAL\n\n"
             "Frequências aceitas: semanal, quinzenal, mensal, anual\n\n"
-            "Exemplo: /addrec 15/05 10:00 | mensal | Dr. Silva | Retorno | Sala 3"
+            "Exemplo: /addrec 15/05 10:00 | mensal | Academia | Treino funcional | Parque"
         )
         return
 
@@ -622,7 +622,7 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(parts) < 3:
         await update.message.reply_text(
             "Formato inválido. Use:\n"
-            "/addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL"
+            "/addrec DATA HORA | FREQ | TÍTULO | DESCRIÇÃO | LOCAL"
         )
         return
 
@@ -671,13 +671,13 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         freq_label = FREQ_LABELS[frequency]
         await update.message.reply_text(
-            f"🔁 Compromisso recorrente adicionado!\n"
+            f"🔁 Evento recorrente adicionado!\n"
             f"ID: {appointment_id}\n"
             f"Início: {date_str} às {time_str}\n"
             f"Frequência: {freq_label} (sem data de término)\n"
-            f"Médico: {doctor}\n"
-            f"Descrição: {description}\n\n"
-            f"Para excluir esta série: /delrec {appointment_id}"
+            + (f"Título: {doctor}\n" if doctor else "")
+            + f"Descrição: {description}\n\n"
+            + f"Para excluir esta série: /delrec {appointment_id}"
         )
         print(f"✅ Recurring entry saved: ID {appointment_id}, freq={frequency}, start={date_str}")
 
@@ -736,7 +736,7 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_appointments = [apt for apt in all_appointments if apt.get('user_id') == user_id]
 
         if not user_appointments:
-            await update.message.reply_text("Você ainda não tem consultas ou lembretes cadastrados.\n\nUse /add ou /reminder para adicionar!")
+            await update.message.reply_text("Você ainda não tem eventos ou lembretes cadastrados.\n\nUse /add ou /reminder para adicionar!")
             print(f"ℹ️  User {user_id} has no appointments yet")
             return
 
@@ -755,17 +755,17 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Sem compromissos futuros.")
             return
 
-        message = "📋 Suas Consultas e Lembretes:\n\n"
+        message = "📋 Seus Eventos e Lembretes:\n\n"
 
         for apt in future_one_time:
-            item_type = "🏥 Consulta" if apt.get('type') == 'appointment' else "⏰ Lembrete"
+            item_type = "📅 Evento" if apt.get('type') == 'appointment' else "⏰ Lembrete"
             message += f"{item_type} - ID: {apt['id']}\n"
             message += f"Data: {apt['date']} às {apt['time']}\n"
             if apt.get('doctor'):
-                message += f"Médico: {apt['doctor']}\n"
+                message += f"Título: {apt['doctor']}\n"
             message += f"Descrição: {apt['description']}\n"
             if apt.get('location'):
-                message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
+                message += f"Local: {apt['location']}\n"
             message += "\n"
 
         if recurring:
@@ -775,7 +775,7 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 message += f"🔁 {freq_label} - ID: {apt['id']}\n"
                 message += f"Início: {apt['date']} às {apt['time']}\n"
                 if apt.get('doctor'):
-                    message += f"Médico: {apt['doctor']}\n"
+                    message += f"Título: {apt['doctor']}\n"
                 message += f"Descrição: {apt['description']}\n"
                 if apt.get('location'):
                     message += f"Local: {apt['location']}\n"
@@ -786,7 +786,7 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         print(f"❌ Exception in list_appointments for user {update.effective_user.id}: {e}")
-        await update.message.reply_text(f"Erro ao listar consultas: {str(e)}")
+        await update.message.reply_text(f"Erro ao listar eventos: {str(e)}")
 
 async def delete_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Exclui uma consulta por ID (apenas do próprio usuário)"""
@@ -857,7 +857,7 @@ Este é um teste para verificar se:
 • Consegue enviar mensagens para você
 • Os lembretes automáticos funcionarão
 
-🔔 Quando você adicionar consultas, receberá lembretes automáticos:
+🔔 Quando você adicionar eventos, receberá lembretes automáticos:
 • 24 horas antes
 • 2 horas antes
 
@@ -940,7 +940,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_year = today.year
         current_month = today.month
         
-        system_prompt = f"""Você é um assistente que extrai informações de consultas médicas e lembretes de mensagens de voz.
+        system_prompt = f"""Você é um assistente que extrai informações de eventos e lembretes de mensagens de voz.
 
 CONTEXTO TEMPORAL:
 - Data atual: {current_date}
@@ -953,15 +953,15 @@ CONTEXTO TEMPORAL:
 Extraia as seguintes informações:
 - data (formato AAAA-MM-DD)
 - hora (formato HH:MM, aceite também "14h", "14h30", "2 da tarde")
-- tipo (appointment para consultas médicas, reminder para lembretes como medicação, exames, etc.)
-- médico (nome do médico se for consulta, deixe vazio se for lembrete)
+- tipo (appointment para eventos/compromissos, reminder para lembretes)
+- título (título curto do evento, deixe vazio se for lembrete simples)
 - descrição (resumo do compromisso)
 - local/observação
 
 EXEMPLOS:
-- "consulta com Dr. Silva dia 15 de março às 14h" → use ano {current_year}
-- "lembrete para tomar remédio amanhã às 8h" → calcule data de amanhã
-- "dentista na próxima terça às 10h30" → calcule a próxima terça
+- "reunião com o cliente dia 15 de março às 14h" → use ano {current_year}
+- "lembrete para ligar para o banco amanhã às 8h" → calcule data de amanhã
+- "academia na próxima terça às 10h30" → calcule a próxima terça
 
 EVENTOS RECORRENTES:
 Se o usuário mencionar recorrência (toda semana, todo mês, semanalmente, mensalmente, toda segunda-feira, toda quinta-feira, etc.), inclua o campo "recurrence":
@@ -976,7 +976,7 @@ QUANDO HÁ RECORRÊNCIA E DIA DA SEMANA:
 - "toda terça às 10h" → próxima terça como "date"
 
 Retorne APENAS um JSON no formato:
-{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Dr. Nome", "description": "texto", "location": "local", "recurrence": "weekly"}}
+{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Título do evento", "description": "texto", "location": "local", "recurrence": "weekly"}}
 
 Se não conseguir extrair a data/hora, use valores vazios."""
 
@@ -1027,7 +1027,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         save_appointments(data)
 
         # Send confirmation
-        item_type = "🏥 Consulta" if new_entry['type'] == 'appointment' else "⏰ Lembrete"
+        item_type = "📅 Evento" if new_entry['type'] == 'appointment' else "⏰ Lembrete"
         confirmation = f"✅ {item_type} adicionado com sucesso!\n\n"
         confirmation += f"ID: {appointment_id}\n"
         confirmation += f"Data: {new_entry['date']} às {new_entry['time']}\n"
@@ -1035,7 +1035,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
             confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]} (sem data de término)\n"
             confirmation += f"Para excluir a série: /delrec {appointment_id}\n"
         if new_entry['doctor']:
-            confirmation += f"Médico: {new_entry['doctor']}\n"
+            confirmation += f"Título: {new_entry['doctor']}\n"
         confirmation += f"Descrição: {new_entry['description']}\n"
         if new_entry['location']:
             confirmation += f"{'Local' if new_entry['type'] == 'appointment' else 'Observação'}: {new_entry['location']}"
@@ -1083,7 +1083,7 @@ async def check_and_send_reminders():
                     continue
                 
                 apt_id = apt['id']
-                item_type = "🏥 Consulta" if apt.get('type') == 'appointment' else "⏰ Lembrete"
+                item_type = "📅 Evento" if apt.get('type') == 'appointment' else "⏰ Lembrete"
 
                 # Iterate over all upcoming occurrences of this entry
                 window_start = now - timedelta(hours=24, minutes=11)
@@ -1100,10 +1100,10 @@ async def check_and_send_reminders():
                             message = f"🔔 {item_type} AMANHÃ!\n\n"
                             message += f"Data: {occ_dt.strftime('%d/%m/%Y')} às {occ_time}\n"
                             if apt.get('doctor'):
-                                message += f"Médico: {apt['doctor']}\n"
+                                message += f"Título: {apt['doctor']}\n"
                             message += f"Descrição: {apt['description']}\n"
                             if apt.get('location'):
-                                message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
+                                message += f"Local: {apt['location']}\n"
                             message += f"\n⏰ Faltam aproximadamente 24 horas!"
                             await app_instance.bot.send_message(chat_id=user_id, text=message)
                             save_sent_reminder_occurrence(apt_id, occ_date, '24h')
@@ -1115,10 +1115,10 @@ async def check_and_send_reminders():
                             message = f"🔔 {item_type} EM 2 HORAS!\n\n"
                             message += f"Data: HOJE às {occ_time}\n"
                             if apt.get('doctor'):
-                                message += f"Médico: {apt['doctor']}\n"
+                                message += f"Título: {apt['doctor']}\n"
                             message += f"Descrição: {apt['description']}\n"
                             if apt.get('location'):
-                                message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
+                                message += f"Local: {apt['location']}\n"
                             message += f"\n⏰ Faltam aproximadamente 2 horas!"
                             await app_instance.bot.send_message(chat_id=user_id, text=message)
                             save_sent_reminder_occurrence(apt_id, occ_date, '2h')
