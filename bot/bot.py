@@ -939,11 +939,13 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_date = today.strftime("%Y-%m-%d")
         current_year = today.year
         current_month = today.month
-        
+        weekday_names_pt = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo']
+        current_weekday = weekday_names_pt[today.weekday()]
+
         system_prompt = f"""Você é um assistente que extrai informações de eventos e lembretes de mensagens de voz.
 
 CONTEXTO TEMPORAL:
-- Data atual: {current_date}
+- Data atual: {current_date} ({current_weekday})
 - Ano atual: {current_year}
 - Mês atual: {current_month}
 - Se o usuário não mencionar o ano, assuma o ano atual ({current_year})
@@ -984,7 +986,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Hoje é {current_date}. Mensagem do usuário: {transcribed_text}"}
+                {"role": "user", "content": f"Hoje é {current_date} ({current_weekday}). Mensagem do usuário: {transcribed_text}"}
             ],
             response_format={"type": "json_object"}
         )
