@@ -5,6 +5,58 @@ let appointments = [];
 let viewMode = '7days'; // 'month' or '7days'
 let startDate = new Date(); // For 7-day view
 
+// Frequency labels in Portuguese
+const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quinzenal', monthly: 'Mensal', yearly: 'Anual' };
+
+// Format a Date object as YYYY-MM-DD
+function formatDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Add n months to a date, clamping to end of month (mirrors Python _add_months)
+function addMonthsJS(date, n) {
+    const d = new Date(date);
+    const targetMonth = d.getMonth() + n;
+    const year = d.getFullYear() + Math.floor(targetMonth / 12);
+    const month = ((targetMonth % 12) + 12) % 12;
+    const day = Math.min(d.getDate(), new Date(year, month + 1, 0).getDate());
+    return new Date(year, month, day);
+}
+
+// Expand recurring appointments into concrete occurrences within [fromDate, toDate].
+// Non-recurring entries are returned as-is. Recurring ones get _recurring: true.
+function expandAppointments(apts, fromDate, toDate) {
+    const result = [];
+    for (const apt of apts) {
+        if (!apt.recurrence) {
+            result.push(apt);
+            continue;
+        }
+        const recEnd = apt.recurrence_end
+            ? new Date(apt.recurrence_end + 'T23:59:00')
+            : toDate;
+        const effectiveEnd = recEnd < toDate ? recEnd : toDate;
+        let current = new Date(apt.date + 'T00:00:00');
+        while (current <= effectiveEnd) {
+            if (current >= fromDate) {
+                result.push({ ...apt, date: formatDateStr(current), _recurring: true });
+            }
+            if (apt.recurrence === 'weekly') {
+                current.setDate(current.getDate() + 7);
+            } else if (apt.recurrence === 'biweekly') {
+                current.setDate(current.getDate() + 14);
+            } else if (apt.recurrence === 'monthly') {
+                current = addMonthsJS(current, 1);
+            } else if (apt.recurrence === 'yearly') {
+                current = addMonthsJS(current, 12);
+            } else {
+                break;
+            }
+        }
+    }
+    return result;
+}
+
 // Initialize the application
 async function init() {
     updateCurrentDate();
@@ -198,6 +250,11 @@ function renderMonthCalendar() {
         calendar.appendChild(emptyCell);
     }
     
+    // Expand recurring appointments for this month
+    const monthFrom = new Date(year, month, 1);
+    const monthTo = new Date(year, month + 1, 0, 23, 59, 59);
+    const expandedMonthApts = expandAppointments(appointments, monthFrom, monthTo);
+
     // Add days of the month
     const today = new Date();
     for (let day = 1; day <= daysInMonth; day++) {
@@ -211,17 +268,19 @@ function renderMonthCalendar() {
             dayCell.classList.add('today');
         }
         
-        // Check for appointments on this day
-        const dayAppointments = appointments.filter(apt => apt.date === dateStr);
+        // Check for appointments on this day (including expanded recurring occurrences)
+        const dayAppointments = expandedMonthApts.filter(apt => apt.date === dateStr);
+        const hasRecurring = dayAppointments.some(apt => apt._recurring);
         
         dayCell.innerHTML = `
             <div class="day-number">${day}</div>
-            ${dayAppointments.length > 0 ? `<div class="appointment-indicator">${dayAppointments.length}</div>` : ''}
+            ${dayAppointments.length > 0 ? `<div class="appointment-indicator${hasRecurring ? ' recurring-indicator' : ''}">${dayAppointments.length}</div>` : ''}
         `;
         
         if (dayAppointments.length > 0) {
             dayCell.classList.add('has-appointment');
-            dayCell.title = dayAppointments.map(apt => `${apt.time} - ${apt.doctor}`).join('\n');
+            if (hasRecurring) dayCell.classList.add('has-recurring');
+            dayCell.title = dayAppointments.map(apt => `${apt.time} - ${apt.doctor || apt.description}${apt._recurring ? ' 🔁' : ''}`).join('\n');
         }
         
         calendar.appendChild(dayCell);
@@ -247,7 +306,15 @@ function render7DaysView() {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
+    // Expand recurring appointments for the 7-day window
+    const windowStart = new Date(startDate);
+    windowStart.setHours(0, 0, 0, 0);
+    const windowEnd = new Date(startDate);
+    windowEnd.setDate(windowEnd.getDate() + 6);
+    windowEnd.setHours(23, 59, 59);
+    const expanded7DayApts = expandAppointments(appointments, windowStart, windowEnd);
+
     // Create 7 day cards
     for (let i = 0; i < 7; i++) {
         const currentDay = new Date(startDate);
@@ -264,8 +331,8 @@ function render7DaysView() {
             dayCard.classList.add('today');
         }
         
-        // Get appointments for this day
-        const dayAppointments = appointments.filter(apt => apt.date === dateStr);
+        // Get appointments for this day (including expanded recurring occurrences)
+        const dayAppointments = expanded7DayApts.filter(apt => apt.date === dateStr);
         dayAppointments.sort((a, b) => a.time.localeCompare(b.time));
         
         const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -275,13 +342,19 @@ function render7DaysView() {
         if (dayAppointments.length > 0) {
             appointmentsHTML = dayAppointments.map(apt => {
                 const isReminder = apt.type === 'reminder';
-                const cssClass = isReminder ? 'day-appointment reminder' : 'day-appointment';
-                const icon = isReminder ? '⏰' : '🏥';
-                
+                const isRecurring = apt._recurring;
+                const cssClass = isRecurring ? 'day-appointment recurring'
+                    : (isReminder ? 'day-appointment reminder' : 'day-appointment');
+                const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+                const recurBadge = isRecurring
+                    ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
+                    : '';
+
                 return `
                 <div class="${cssClass}">
                     <div class="day-apt-time">${icon} ${apt.time}</div>
                     <div class="day-apt-details">
+                        ${recurBadge}
                         ${apt.doctor ? `<div class="day-apt-doctor">${apt.doctor}</div>` : ''}
                         <div class="day-apt-desc">${apt.description}</div>
                         ${apt.location ? `<div class="day-apt-location">📍 ${apt.location}</div>` : ''}
@@ -314,15 +387,20 @@ function render7DaysView() {
 function renderAppointmentsList() {
     const list = document.getElementById('appointmentsList');
     
+    // Expand recurring appointments up to 6 months ahead
+    const now = new Date();
+    const sixMonthsAhead = new Date(now);
+    sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+    const expandedApts = expandAppointments(appointments, now, sixMonthsAhead);
+
     // Sort appointments by date and time
-    const sortedAppointments = [...appointments].sort((a, b) => {
+    const sortedAppointments = expandedApts.sort((a, b) => {
         const dateA = new Date(`${a.date}T${a.time}`);
         const dateB = new Date(`${b.date}T${b.time}`);
         return dateA - dateB;
     });
     
     // Filter future appointments
-    const now = new Date();
     const futureAppointments = sortedAppointments.filter(apt => {
         const aptDate = new Date(`${apt.date}T${apt.time}`);
         return aptDate >= now;
@@ -337,7 +415,13 @@ function renderAppointmentsList() {
         const aptDate = new Date(`${apt.date}T${apt.time}`);
         const dateStr = aptDate.toLocaleDateString('pt-BR', { weekday: 'short', month: 'short', day: 'numeric' });
         const isReminder = apt.type === 'reminder';
-        const cardClass = isReminder ? 'appointment-card reminder-card-style' : 'appointment-card';
+        const isRecurring = apt._recurring;
+        const cardClass = isRecurring ? 'appointment-card recurring-card'
+            : (isReminder ? 'appointment-card reminder-card-style' : 'appointment-card');
+        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+        const recurBadge = isRecurring
+            ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
+            : '';
         
         return `
             <div class="${cardClass}">
@@ -346,8 +430,9 @@ function renderAppointmentsList() {
                     <div class="time-large">${apt.time}</div>
                 </div>
                 <div class="appointment-details">
+                    ${recurBadge}
                     ${apt.doctor ? `<div class="appointment-doctor">${apt.doctor}</div>` : ''}
-                    <div class="appointment-description">${isReminder ? '⏰ ' : '🏥 '}${apt.description}</div>
+                    <div class="appointment-description">${icon} ${apt.description}</div>
                     ${apt.location ? `<div class="appointment-location">📍 ${apt.location}</div>` : ''}
                 </div>
             </div>
@@ -361,7 +446,10 @@ function renderTodayReminders() {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    const todayAppointments = appointments.filter(apt => apt.date === todayStr);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const expandedToday = expandAppointments(appointments, todayStart, todayEnd);
+    const todayAppointments = expandedToday.filter(apt => apt.date === todayStr);
     
     if (todayAppointments.length === 0) {
         list.innerHTML = '<div class="no-reminders">Nenhum lembrete hoje</div>';
@@ -373,13 +461,19 @@ function renderTodayReminders() {
     
     list.innerHTML = todayAppointments.map(apt => {
         const isReminder = apt.type === 'reminder';
-        const icon = isReminder ? '⏰' : '🏥';
-        const cardClass = isReminder ? 'reminder-card reminder-type' : 'reminder-card';
+        const isRecurring = apt._recurring;
+        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '🏥');
+        const cardClass = isRecurring ? 'reminder-card recurring'
+            : (isReminder ? 'reminder-card reminder-type' : 'reminder-card');
+        const recurBadge = isRecurring
+            ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
+            : '';
         
         return `
         <div class="${cardClass}">
             <div class="reminder-time">${icon} ${apt.time}</div>
             <div class="reminder-details">
+                ${recurBadge}
                 ${apt.doctor ? `<div class="reminder-doctor">${apt.doctor}</div>` : ''}
                 <div class="reminder-description">${apt.description}</div>
                 ${apt.location ? `<div class="reminder-location">${apt.location}</div>` : ''}
