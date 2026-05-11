@@ -51,18 +51,13 @@ def _add_months(dt, n):
     return dt.replace(year=year, month=month, day=min(dt.day, last_day))
 
 
-def get_recurrence_end(start: datetime, frequency: str) -> datetime:
-    """Return the end date for a recurring rule (1 year ahead, 2 for yearly)."""
-    if frequency == 'yearly':
-        return start.replace(year=start.year + 2)
-    return _add_months(start, 12)
-
-
 def iter_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = None):
     """
     Yield (occurrence_date_str, time_str) for a recurring appointment rule
     within the optional [from_dt, to_dt] window.
     Non-recurring entries yield their single (date, time) tuple.
+    If recurrence_end is absent the series is treated as infinite;
+    to_dt (or a 50-year safety cap) is used as the upper bound.
     """
     frequency = apt.get('recurrence')
     if not frequency:
@@ -71,11 +66,13 @@ def iter_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = None
 
     start = datetime.strptime(f"{apt['date']} {apt['time']}", '%Y-%m-%d %H:%M')
     end_str = apt.get('recurrence_end')
-    # Use end-of-day so occurrences on the end date itself are included
     if end_str:
+        # Use end-of-day so occurrences on the end date itself are included
         end = datetime.strptime(end_str, '%Y-%m-%d').replace(hour=23, minute=59)
+    elif to_dt:
+        end = to_dt  # caller already bounds the window
     else:
-        end = get_recurrence_end(start, frequency).replace(hour=23, minute=59)
+        end = start.replace(year=start.year + 50)  # safety cap for unbounded calls
 
     current = start
     while current <= end:
@@ -652,9 +649,6 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
         description = parts[3] if len(parts) > 3 else "Compromisso recorrente"
         location = parts[4] if len(parts) > 4 else ""
 
-        start_dt = datetime.strptime(f"{date_str} {time_str}", '%Y-%m-%d %H:%M')
-        recurrence_end = get_recurrence_end(start_dt, frequency).strftime('%Y-%m-%d')
-
         data = load_appointments()
         appointment_id = max([a.get('id', 0) for a in data['appointments']], default=0) + 1
 
@@ -669,7 +663,6 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "location": location,
             "type": "appointment",
             "recurrence": frequency,
-            "recurrence_end": recurrence_end,
             "created_at": datetime.now().isoformat()
         }
 
@@ -681,10 +674,9 @@ async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔁 Compromisso recorrente adicionado!\n"
             f"ID: {appointment_id}\n"
             f"Início: {date_str} às {time_str}\n"
-            f"Frequência: {freq_label}\n"
+            f"Frequência: {freq_label} (sem data de término)\n"
             f"Médico: {doctor}\n"
-            f"Descrição: {description}\n"
-            f"Válido até: {recurrence_end}\n\n"
+            f"Descrição: {description}\n\n"
             f"Para excluir esta série: /delrec {appointment_id}"
         )
         print(f"✅ Recurring entry saved: ID {appointment_id}, freq={frequency}, start={date_str}")
@@ -1016,9 +1008,8 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         }
 
         if recurrence:
-            start_dt = datetime.strptime(f"{new_entry['date']} {new_entry['time']}", '%Y-%m-%d %H:%M')
             new_entry['recurrence'] = recurrence
-            new_entry['recurrence_end'] = get_recurrence_end(start_dt, recurrence).strftime('%Y-%m-%d')
+            # No recurrence_end stored → infinite series
 
         data['appointments'].append(new_entry)
         save_appointments(data)
@@ -1029,8 +1020,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         confirmation += f"ID: {appointment_id}\n"
         confirmation += f"Data: {new_entry['date']} às {new_entry['time']}\n"
         if recurrence:
-            confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]}\n"
-            confirmation += f"Válido até: {new_entry['recurrence_end']}\n"
+            confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]} (sem data de término)\n"
             confirmation += f"Para excluir a série: /delrec {appointment_id}\n"
         if new_entry['doctor']:
             confirmation += f"Médico: {new_entry['doctor']}\n"

@@ -46,7 +46,6 @@ with patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'fake_token_for_tests'}):
 
 # Pull the functions under test
 _add_months = bot_module._add_months
-get_recurrence_end = bot_module.get_recurrence_end
 iter_occurrences = bot_module.iter_occurrences
 FREQ_LABELS = bot_module.FREQ_LABELS
 FREQ_ALIASES = bot_module.FREQ_ALIASES
@@ -79,28 +78,6 @@ class TestAddMonths(unittest.TestCase):
         self.assertEqual(result, datetime(2026, 9, 10))
 
 
-class TestGetRecurrenceEnd(unittest.TestCase):
-
-    def test_weekly_ends_in_12_months(self):
-        start = datetime(2026, 5, 14, 15, 0)
-        end = get_recurrence_end(start, 'weekly')
-        self.assertEqual(end, _add_months(start, 12))
-
-    def test_monthly_ends_in_12_months(self):
-        start = datetime(2026, 5, 1, 10, 0)
-        end = get_recurrence_end(start, 'monthly')
-        self.assertEqual(end, _add_months(start, 12))
-
-    def test_yearly_ends_in_2_years(self):
-        start = datetime(2026, 5, 1, 10, 0)
-        end = get_recurrence_end(start, 'yearly')
-        self.assertEqual(end, start.replace(year=2028))
-
-    def test_biweekly_ends_in_12_months(self):
-        start = datetime(2026, 6, 1, 8, 0)
-        end = get_recurrence_end(start, 'biweekly')
-        self.assertEqual(end, _add_months(start, 12))
-
 
 class TestIterOccurrences(unittest.TestCase):
 
@@ -112,10 +89,26 @@ class TestIterOccurrences(unittest.TestCase):
         }
         if recurrence:
             apt['recurrence'] = recurrence
-            apt['recurrence_end'] = recurrence_end or get_recurrence_end(
-                datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M'), recurrence
-            ).strftime('%Y-%m-%d')
+            if recurrence_end:
+                apt['recurrence_end'] = recurrence_end
+            # No recurrence_end → infinite series
         return apt
+
+    def test_infinite_uses_to_dt_bound(self):
+        # No recurrence_end → series is infinite; to_dt caps the results
+        apt = self._make_apt('2026-05-14', '15:00', 'weekly')
+        to_dt = datetime(2026, 6, 4, 23, 59)
+        result = list(iter_occurrences(apt, to_dt=to_dt))
+        # 14, 21, 28 May, 4 Jun = 4 occurrences
+        self.assertEqual(len(result), 4)
+        self.assertEqual(result[0][0], '2026-05-14')
+        self.assertEqual(result[-1][0], '2026-06-04')
+
+    def test_infinite_no_to_dt_uses_safety_cap(self):
+        # No recurrence_end, no to_dt → safety cap (50 years), just check it doesn't hang
+        apt = self._make_apt('2026-05-14', '15:00', 'yearly')
+        result = list(iter_occurrences(apt))
+        self.assertEqual(len(result), 51)  # 2026 through 2076
 
     # --- Non-recurring ---
 
