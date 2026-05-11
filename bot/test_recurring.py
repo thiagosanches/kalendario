@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""
-Unit tests for bot.py pure functions.
+"""Unit tests for the refactored bot modules.
+
 Run with: python3 -m pytest test_recurring.py -v
 """
 
@@ -10,11 +10,11 @@ import json
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
 # ---------------------------------------------------------------------------
-# Bootstrap: stub heavy third-party deps so bot.py can be imported without
-# a real Telegram token or network connection.
+# Bootstrap: stub heavy third-party deps before importing any bot module.
 # ---------------------------------------------------------------------------
 os.environ['TELEGRAM_BOT_TOKEN'] = 'fake_token_for_tests'
 os.environ['OPENAI_API_KEY'] = ''
@@ -36,23 +36,15 @@ sys.modules['openai'].OpenAI = MagicMock()
 sys.modules['apscheduler.schedulers.asyncio'].AsyncIOScheduler = MagicMock()
 sys.modules['apscheduler.triggers.interval'].IntervalTrigger = MagicMock()
 
-with patch('os.path.exists', return_value=False), \
-     patch('os.makedirs'), \
+# Import modules under test directly — no monolith needed.
+with patch('pathlib.Path.exists', return_value=False), \
+     patch('pathlib.Path.mkdir'), \
      patch('builtins.open', mock_open(read_data='{}')):
-    import bot as bot_module
-
-# Pull functions and constants under test
-_add_months                  = bot_module._add_months
-generate_occurrences         = bot_module.generate_occurrences
-parse_flexible_date          = bot_module.parse_flexible_date
-load_appointments            = bot_module.load_appointments
-save_appointments            = bot_module.save_appointments
-load_sent_reminders          = bot_module.load_sent_reminders
-was_reminder_sent            = bot_module.was_reminder_sent
-save_sent_reminder_occurrence = bot_module.save_sent_reminder_occurrence
-is_user_allowed              = bot_module.is_user_allowed
-FREQ_LABELS                  = bot_module.FREQ_LABELS
-FREQ_ALIASES                 = bot_module.FREQ_ALIASES
+    from recurrence import _add_months, generate_occurrences, FREQ_LABELS, FREQ_ALIASES
+    from date_utils import parse_flexible_date
+    from storage import (load_appointments, save_appointments, load_sent_reminders,
+                         was_reminder_sent, save_sent_reminder_occurrence)
+    from middleware import is_user_allowed
 
 
 # ---------------------------------------------------------------------------
@@ -316,13 +308,15 @@ class TestParseFlexibleDate(unittest.TestCase):
 class TestAppointmentStorage(unittest.TestCase):
 
     def setUp(self):
+        import storage
         self.tmp = tempfile.NamedTemporaryFile(suffix='.json', delete=False)
         self.tmp.close()
-        self._orig_file = bot_module.APPOINTMENTS_FILE
-        bot_module.APPOINTMENTS_FILE = self.tmp.name
+        self._orig_file = storage.APPOINTMENTS_FILE
+        storage.APPOINTMENTS_FILE = Path(self.tmp.name)
 
     def tearDown(self):
-        bot_module.APPOINTMENTS_FILE = self._orig_file
+        import storage
+        storage.APPOINTMENTS_FILE = self._orig_file
         os.unlink(self.tmp.name)
 
     def test_load_returns_empty_when_file_missing(self):
@@ -358,16 +352,18 @@ class TestAppointmentStorage(unittest.TestCase):
 class TestSentReminders(unittest.TestCase):
 
     def setUp(self):
+        import storage
         self.tmp = tempfile.NamedTemporaryFile(suffix='.json', delete=False)
         self.tmp.close()
-        self._orig_file = bot_module.SENT_REMINDERS_FILE
-        bot_module.SENT_REMINDERS_FILE = self.tmp.name
+        self._orig_file = storage.SENT_REMINDERS_FILE
+        storage.SENT_REMINDERS_FILE = Path(self.tmp.name)
         # Start with empty reminders file
         with open(self.tmp.name, 'w') as f:
             json.dump({'reminders': []}, f)
 
     def tearDown(self):
-        bot_module.SENT_REMINDERS_FILE = self._orig_file
+        import storage
+        storage.SENT_REMINDERS_FILE = self._orig_file
         os.unlink(self.tmp.name)
 
     def test_not_sent_initially(self):
@@ -412,26 +408,32 @@ class TestSentReminders(unittest.TestCase):
 class TestIsUserAllowed(unittest.TestCase):
 
     def setUp(self):
-        self._orig = bot_module.ALLOWED_USER_IDS[:]
+        import config
+        self._orig = config.ALLOWED_USER_IDS[:]
 
     def tearDown(self):
-        bot_module.ALLOWED_USER_IDS[:] = self._orig
+        import config
+        config.ALLOWED_USER_IDS[:] = self._orig
 
     def test_empty_whitelist_allows_everyone(self):
-        bot_module.ALLOWED_USER_IDS.clear()
+        import config
+        config.ALLOWED_USER_IDS.clear()
         self.assertTrue(is_user_allowed(99999))
 
     def test_whitelisted_user_allowed(self):
-        bot_module.ALLOWED_USER_IDS[:] = [123, 456]
+        import config
+        config.ALLOWED_USER_IDS[:] = [123, 456]
         self.assertTrue(is_user_allowed(123))
         self.assertTrue(is_user_allowed(456))
 
     def test_non_whitelisted_user_denied(self):
-        bot_module.ALLOWED_USER_IDS[:] = [123]
+        import config
+        config.ALLOWED_USER_IDS[:] = [123]
         self.assertFalse(is_user_allowed(999))
 
     def test_user_not_in_empty_list_denied_after_population(self):
-        bot_module.ALLOWED_USER_IDS[:] = [1]
+        import config
+        config.ALLOWED_USER_IDS[:] = [1]
         self.assertFalse(is_user_allowed(2))
 
 if __name__ == '__main__':
