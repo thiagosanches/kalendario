@@ -51,7 +51,7 @@ def _add_months(dt, n):
     return dt.replace(year=year, month=month, day=min(dt.day, last_day))
 
 
-def iter_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = None):
+def generate_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = None):
     """
     Yield (occurrence_date_str, time_str) for a recurring appointment rule
     within the optional [from_dt, to_dt] window.
@@ -744,7 +744,7 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Build a flat list of (occurrence_datetime, apt, occurrence_date_str)
         rows = []
         for apt in user_appointments:
-            for occ_date, occ_time in iter_occurrences(apt, from_dt=now):
+            for occ_date, occ_time in generate_occurrences(apt, from_dt=now):
                 occ_dt = datetime.strptime(f"{occ_date} {occ_time}", '%Y-%m-%d %H:%M')
                 rows.append((occ_dt, apt, occ_date))
 
@@ -1076,7 +1076,7 @@ async def check_and_send_reminders():
                 # Iterate over all upcoming occurrences of this entry
                 window_start = now - timedelta(hours=24, minutes=11)
                 window_end = now + timedelta(hours=24, minutes=11)
-                for occ_date, occ_time in iter_occurrences(apt, from_dt=window_start, to_dt=window_end):
+                for occ_date, occ_time in generate_occurrences(apt, from_dt=window_start, to_dt=window_end):
                     occ_dt = datetime.strptime(f"{occ_date} {occ_time}", '%Y-%m-%d %H:%M')
                     if occ_dt <= now:
                         continue
