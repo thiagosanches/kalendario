@@ -9,8 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy bot files
-COPY *.py ./
-COPY handlers/ ./handlers/
+COPY bot.py .
 
 # Create temp directory for audio files
 RUN mkdir -p temp_audio
