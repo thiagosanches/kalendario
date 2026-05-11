@@ -198,14 +198,14 @@ async def check_authorization(update: Update, context: ContextTypes.DEFAULT_TYPE
     return True
 
 def load_appointments():
-    """Carrega consultas existentes do arquivo JSON"""
+    """Carrega eventos existentes do arquivo JSON"""
     if os.path.exists(APPOINTMENTS_FILE):
         with open(APPOINTMENTS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {"appointments": []}
 
 def save_appointments(data):
-    """Salva consultas no arquivo JSON"""
+    """Salva eventos no arquivo JSON"""
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(APPOINTMENTS_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -383,7 +383,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await start(update, context)
 
 async def add_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Adiciona uma nova consulta"""
+    """Adiciona um novo evento"""
     print(f"📝 /add command received from user {update.effective_user.id}")
     
     if not await check_authorization(update, context):
@@ -601,7 +601,7 @@ async def add_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erro ao adicionar lembrete: {str(e)}")
 
 async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Adiciona um compromisso recorrente: /addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL"""
+    """Adiciona um compromisso recorrente: /addrec DATA HORA | FREQ | TÍTULO | DESCRIÇÃO | LOCAL"""
     print(f"🔁 /addrec command received from user {update.effective_user.id}")
 
     if not await check_authorization(update, context):
@@ -723,7 +723,7 @@ async def delete_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Lista todas as consultas e lembretes do usuário"""
+    """Lista todos os eventos e lembretes do usuário"""
     if not await check_authorization(update, context):
         return
 
@@ -789,7 +789,7 @@ async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erro ao listar eventos: {str(e)}")
 
 async def delete_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Exclui uma consulta por ID (apenas do próprio usuário)"""
+    """Exclui um evento por ID (apenas do próprio usuário)"""
     if not await check_authorization(update, context):
         return
     
@@ -798,7 +798,7 @@ async def delete_appointment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text = update.message.text.replace('/delete', '').strip()
         
         if not text:
-            await update.message.reply_text("Por favor, forneça o ID da consulta: /delete 1")
+            await update.message.reply_text("Por favor, forneça o ID do evento: /delete 1")
             return
         
         appointment_id = int(text)
@@ -876,7 +876,7 @@ Seu User ID: {user_id}
             pass
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Processa mensagens de voz e cria consultas/lembretes"""
+    """Processa mensagens de voz e cria eventos/lembretes"""
     if not await check_authorization(update, context):
         return
     if not await rate_limit_check(update, context):
@@ -998,7 +998,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         if not parsed_data.get('date') or not parsed_data.get('time'):
             await update.message.reply_text(
                 "❌ Não consegui identificar a data e hora. Por favor, tente novamente mencionando claramente a data e horário.\n\n"
-                "Exemplo: 'Consulta com Dr. Silva no dia 15 de março às 14h30'"
+                "Exemplo: 'Reunião com João no dia 15 de março às 14h30'"
             )
             return
         
@@ -1060,7 +1060,7 @@ Se não conseguir extrair a data/hora, use valores vazios."""
                 print(f"Failed to remove audio file {audio_path}: {cleanup_error}")
 
 async def check_and_send_reminders():
-    """Verifica e envia lembretes de consultas próximas para cada usuário"""
+    """Verifica e envia lembretes de eventos próximos para cada usuário"""
     global app_instance
     
     if not app_instance:
