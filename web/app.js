@@ -74,6 +74,7 @@ async function init() {
             startDate.setDate(startDate.getDate() - 7);
         }
         renderView();
+        renderAppointmentsList();
     });
     
     document.getElementById('nextPeriod').addEventListener('click', () => {
@@ -83,6 +84,7 @@ async function init() {
             startDate.setDate(startDate.getDate() + 7);
         }
         renderView();
+        renderAppointmentsList();
     });
     
     document.getElementById('monthViewBtn').addEventListener('click', () => {
@@ -90,6 +92,7 @@ async function init() {
         document.getElementById('monthViewBtn').classList.add('active');
         document.getElementById('days15ViewBtn').classList.remove('active');
         renderView();
+        renderAppointmentsList();
     });
     
     document.getElementById('days15ViewBtn').addEventListener('click', () => {
@@ -98,6 +101,7 @@ async function init() {
         document.getElementById('days15ViewBtn').classList.add('active');
         document.getElementById('monthViewBtn').classList.remove('active');
         renderView();
+        renderAppointmentsList();
     });
     
     // Manual refresh button
@@ -386,12 +390,26 @@ function render7DaysView() {
 // Render appointments list
 function renderAppointmentsList() {
     const list = document.getElementById('appointmentsList');
-    
-    // Expand recurring appointments up to 6 months ahead
-    const now = new Date();
-    const sixMonthsAhead = new Date(now);
-    sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
-    const expandedApts = expandAppointments(appointments, now, sixMonthsAhead);
+    const heading = document.querySelector('.appointments-section h2');
+
+    // Determine the window based on current view
+    let windowFrom, windowTo;
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    if (viewMode === 'month') {
+        windowFrom = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0);
+        windowTo   = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+        heading.textContent = `Lembretes de ${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+    } else {
+        windowFrom = new Date(startDate);
+        windowFrom.setHours(0, 0, 0, 0);
+        windowTo = new Date(startDate);
+        windowTo.setDate(windowTo.getDate() + 6);
+        windowTo.setHours(23, 59, 59);
+        heading.textContent = 'Próximos Lembretes';
+    }
+
+    const expandedApts = expandAppointments(appointments, windowFrom, windowTo);
 
     // Sort appointments by date and time
     const sortedAppointments = expandedApts.sort((a, b) => {
@@ -399,17 +417,13 @@ function renderAppointmentsList() {
         const dateB = new Date(`${b.date}T${b.time}`);
         return dateA - dateB;
     });
-    
-    // Filter future appointments
-    const futureAppointments = sortedAppointments.filter(apt => {
-        const aptDate = new Date(`${apt.date}T${apt.time}`);
-        return aptDate >= now;
-    });
-    
-    if (futureAppointments.length === 0) {
+
+    if (sortedAppointments.length === 0) {
         list.innerHTML = '<div class="no-appointments">Nenhum lembrete agendado</div>';
         return;
     }
+
+    const futureAppointments = sortedAppointments;
     
     list.innerHTML = futureAppointments.map(apt => {
         const aptDate = new Date(`${apt.date}T${apt.time}`);
