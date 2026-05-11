@@ -1,54 +1,58 @@
 #!/usr/bin/env python3
 """
-Unit tests for recurring event logic in bot.py.
-Run with: python -m pytest test_recurring.py -v
+Unit tests for bot.py pure functions.
+Run with: python3 -m pytest test_recurring.py -v
 """
 
 import sys
 import os
+import json
+import tempfile
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 # ---------------------------------------------------------------------------
-# Import only the pure functions from bot.py without triggering the
-# module-level credential checks (BOT_TOKEN validation etc.)
+# Bootstrap: stub heavy third-party deps so bot.py can be imported without
+# a real Telegram token or network connection.
 # ---------------------------------------------------------------------------
-os.environ.setdefault('TELEGRAM_BOT_TOKEN', 'test_token')
-os.environ.setdefault('OPENAI_API_KEY', '')
+os.environ['TELEGRAM_BOT_TOKEN'] = 'fake_token_for_tests'
+os.environ['OPENAI_API_KEY'] = ''
 
-# Patch the credential guard so it doesn't raise on import
-with patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'fake_token_for_tests'}):
-    # We import only specific names to avoid Telegram/OpenAI network calls
-    import importlib, types
+import types
 
-    # Stub heavy third-party modules before importing bot
-    for mod in ['telegram', 'telegram.ext', 'openai', 'apscheduler',
-                'apscheduler.schedulers.asyncio', 'apscheduler.triggers.interval']:
-        if mod not in sys.modules:
-            sys.modules[mod] = types.ModuleType(mod)
+for mod in ['telegram', 'telegram.ext', 'openai', 'apscheduler',
+            'apscheduler.schedulers.asyncio', 'apscheduler.triggers.interval']:
+    if mod not in sys.modules:
+        sys.modules[mod] = types.ModuleType(mod)
 
-    # Minimal stubs so bot.py attribute accesses don't fail
-    sys.modules['telegram'].Update = object
-    sys.modules['telegram.ext'].Application = object
-    sys.modules['telegram.ext'].CommandHandler = lambda *a, **kw: None
-    sys.modules['telegram.ext'].MessageHandler = lambda *a, **kw: None
-    sys.modules['telegram.ext'].filters = MagicMock()
-    sys.modules['telegram.ext'].ContextTypes = MagicMock()
-    sys.modules['openai'].OpenAI = MagicMock()
-    sys.modules['apscheduler.schedulers.asyncio'].AsyncIOScheduler = MagicMock()
-    sys.modules['apscheduler.triggers.interval'].IntervalTrigger = MagicMock()
+sys.modules['telegram'].Update = object
+sys.modules['telegram.ext'].Application = object
+sys.modules['telegram.ext'].CommandHandler = lambda *a, **kw: None
+sys.modules['telegram.ext'].MessageHandler = lambda *a, **kw: None
+sys.modules['telegram.ext'].filters = MagicMock()
+sys.modules['telegram.ext'].ContextTypes = MagicMock()
+sys.modules['openai'].OpenAI = MagicMock()
+sys.modules['apscheduler.schedulers.asyncio'].AsyncIOScheduler = MagicMock()
+sys.modules['apscheduler.triggers.interval'].IntervalTrigger = MagicMock()
 
-    # Patch the token guard
-    with patch('builtins.open', unittest.mock.mock_open(read_data='{}')):
-        with patch('os.path.exists', return_value=False):
-            import bot as bot_module
+with patch('os.path.exists', return_value=False), \
+     patch('os.makedirs'), \
+     patch('builtins.open', mock_open(read_data='{}')):
+    import bot as bot_module
 
-# Pull the functions under test
-_add_months = bot_module._add_months
-generate_occurrences = bot_module.generate_occurrences
-FREQ_LABELS = bot_module.FREQ_LABELS
-FREQ_ALIASES = bot_module.FREQ_ALIASES
+# Pull functions and constants under test
+_add_months                  = bot_module._add_months
+generate_occurrences         = bot_module.generate_occurrences
+parse_flexible_date          = bot_module.parse_flexible_date
+load_appointments            = bot_module.load_appointments
+save_appointments            = bot_module.save_appointments
+load_sent_reminders          = bot_module.load_sent_reminders
+was_reminder_sent            = bot_module.was_reminder_sent
+save_sent_reminder_occurrence = bot_module.save_sent_reminder_occurrence
+is_user_allowed              = bot_module.is_user_allowed
+FREQ_LABELS                  = bot_module.FREQ_LABELS
+FREQ_ALIASES                 = bot_module.FREQ_ALIASES
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +234,187 @@ class TestFreqAliases(unittest.TestCase):
     def test_all_freq_labels_present(self):
         for key in ('weekly', 'biweekly', 'monthly', 'yearly'):
             self.assertIn(key, FREQ_LABELS)
+    def test_unknown_alias_returns_none(self):
+        self.assertIsNone(FREQ_ALIASES.get('diário'))
+        self.assertIsNone(FREQ_ALIASES.get(''))
 
+
+# ---------------------------------------------------------------------------
+# parse_flexible_date
+# ---------------------------------------------------------------------------
+
+class TestParseFlexibleDate(unittest.TestCase):
+
+    def _today(self):
+        return datetime.now().date()
+
+    def test_yyyy_mm_dd(self):
+        future = (self._today() + timedelta(days=30)).strftime('%Y-%m-%d')
+        self.assertEqual(parse_flexible_date(future), future)
+
+    def test_dd_slash_mm(self):
+        future = self._today() + timedelta(days=10)
+        result = parse_flexible_date(future.strftime('%d/%m'))
+        self.assertEqual(result, future.strftime('%Y-%m-%d'))
+
+    def test_dd_slash_mm_yyyy(self):
+        future = self._today() + timedelta(days=15)
+        result = parse_flexible_date(future.strftime('%d/%m/%Y'))
+        self.assertEqual(result, future.strftime('%Y-%m-%d'))
+
+    def test_mm_dash_dd(self):
+        future = self._today() + timedelta(days=5)
+        result = parse_flexible_date(future.strftime('%m-%d'))
+        self.assertEqual(result, future.strftime('%Y-%m-%d'))
+
+    def test_today_is_allowed(self):
+        today_str = self._today().strftime('%Y-%m-%d')
+        self.assertEqual(parse_flexible_date(today_str), today_str)
+
+    def test_past_date_raises(self):
+        yesterday = (self._today() - timedelta(days=1)).strftime('%Y-%m-%d')
+        with self.assertRaises(ValueError):
+            parse_flexible_date(yesterday)
+
+    def test_too_far_future_raises(self):
+        far_future = (self._today() + timedelta(days=731)).strftime('%Y-%m-%d')
+        with self.assertRaises(ValueError):
+            parse_flexible_date(far_future)
+
+    def test_invalid_format_raises(self):
+        with self.assertRaises(ValueError):
+            parse_flexible_date('not-a-date')
+
+    def test_returns_yyyy_mm_dd_format(self):
+        future = self._today() + timedelta(days=20)
+        result = parse_flexible_date(future.strftime('%d/%m/%Y'))
+        datetime.strptime(result, '%Y-%m-%d')  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# load_appointments / save_appointments
+# ---------------------------------------------------------------------------
+
+class TestAppointmentStorage(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.NamedTemporaryFile(suffix='.json', delete=False)
+        self.tmp.close()
+        self._orig_file = bot_module.APPOINTMENTS_FILE
+        bot_module.APPOINTMENTS_FILE = self.tmp.name
+
+    def tearDown(self):
+        bot_module.APPOINTMENTS_FILE = self._orig_file
+        os.unlink(self.tmp.name)
+
+    def test_load_returns_empty_when_file_missing(self):
+        os.unlink(self.tmp.name)
+        result = load_appointments()
+        self.assertEqual(result, {'appointments': []})
+        # Recreate so tearDown doesn't fail
+        open(self.tmp.name, 'w').close()
+
+    def test_save_and_load_roundtrip(self):
+        data = {'appointments': [{'id': 1, 'date': '2026-06-01', 'time': '10:00'}]}
+        save_appointments(data)
+        loaded = load_appointments()
+        self.assertEqual(loaded, data)
+
+    def test_save_preserves_unicode(self):
+        data = {'appointments': [{'description': 'Médico João'}]}
+        save_appointments(data)
+        loaded = load_appointments()
+        self.assertEqual(loaded['appointments'][0]['description'], 'Médico João')
+
+    def test_load_empty_json_file(self):
+        with open(self.tmp.name, 'w') as f:
+            json.dump({'appointments': []}, f)
+        result = load_appointments()
+        self.assertEqual(result['appointments'], [])
+
+
+# ---------------------------------------------------------------------------
+# was_reminder_sent / save_sent_reminder_occurrence
+# ---------------------------------------------------------------------------
+
+class TestSentReminders(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.NamedTemporaryFile(suffix='.json', delete=False)
+        self.tmp.close()
+        self._orig_file = bot_module.SENT_REMINDERS_FILE
+        bot_module.SENT_REMINDERS_FILE = self.tmp.name
+        # Start with empty reminders file
+        with open(self.tmp.name, 'w') as f:
+            json.dump({'reminders': []}, f)
+
+    def tearDown(self):
+        bot_module.SENT_REMINDERS_FILE = self._orig_file
+        os.unlink(self.tmp.name)
+
+    def test_not_sent_initially(self):
+        self.assertFalse(was_reminder_sent(1, '2026-05-14', '24h'))
+
+    def test_sent_after_save(self):
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        self.assertTrue(was_reminder_sent(1, '2026-05-14', '24h'))
+
+    def test_different_occurrence_date_not_marked(self):
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        self.assertFalse(was_reminder_sent(1, '2026-05-21', '24h'))
+
+    def test_different_reminder_type_not_marked(self):
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        self.assertFalse(was_reminder_sent(1, '2026-05-14', '2h'))
+
+    def test_different_appointment_id_not_marked(self):
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        self.assertFalse(was_reminder_sent(2, '2026-05-14', '24h'))
+
+    def test_duplicate_save_does_not_duplicate_key(self):
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        save_sent_reminder_occurrence(1, '2026-05-14', '24h')
+        with open(self.tmp.name) as f:
+            data = json.load(f)
+        keys = [k for k in data['reminders'] if k == '1_2026-05-14_24h']
+        self.assertEqual(len(keys), 1)
+
+    def test_multiple_occurrences_tracked_independently(self):
+        save_sent_reminder_occurrence(5, '2026-05-14', '24h')
+        save_sent_reminder_occurrence(5, '2026-05-21', '24h')
+        self.assertTrue(was_reminder_sent(5, '2026-05-14', '24h'))
+        self.assertTrue(was_reminder_sent(5, '2026-05-21', '24h'))
+        self.assertFalse(was_reminder_sent(5, '2026-05-28', '24h'))
+
+
+# ---------------------------------------------------------------------------
+# is_user_allowed (whitelist)
+# ---------------------------------------------------------------------------
+
+class TestIsUserAllowed(unittest.TestCase):
+
+    def setUp(self):
+        self._orig = bot_module.ALLOWED_USER_IDS[:]
+
+    def tearDown(self):
+        bot_module.ALLOWED_USER_IDS[:] = self._orig
+
+    def test_empty_whitelist_allows_everyone(self):
+        bot_module.ALLOWED_USER_IDS.clear()
+        self.assertTrue(is_user_allowed(99999))
+
+    def test_whitelisted_user_allowed(self):
+        bot_module.ALLOWED_USER_IDS[:] = [123, 456]
+        self.assertTrue(is_user_allowed(123))
+        self.assertTrue(is_user_allowed(456))
+
+    def test_non_whitelisted_user_denied(self):
+        bot_module.ALLOWED_USER_IDS[:] = [123]
+        self.assertFalse(is_user_allowed(999))
+
+    def test_user_not_in_empty_list_denied_after_population(self):
+        bot_module.ALLOWED_USER_IDS[:] = [1]
+        self.assertFalse(is_user_allowed(2))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
