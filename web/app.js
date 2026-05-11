@@ -72,6 +72,7 @@ async function init() {
     renderView();
     renderAppointmentsList();
     renderTodayReminders();
+    renderPastEvents();
     updateRefreshTime();
     
     // Event listeners
@@ -149,6 +150,7 @@ async function refreshData() {
     renderView();
     renderAppointmentsList();
     renderTodayReminders();
+    renderPastEvents();
     updateRefreshTime();
 }
 
@@ -509,6 +511,66 @@ function renderTodayReminders() {
             const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
             const cardClass = isRecurring ? 'reminder-card recurring'
                 : (isReminder ? 'reminder-card reminder-type' : 'reminder-card');
+            const recurBadge = isRecurring
+                ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
+                : '';
+            return `
+            <div class="${cardClass}">
+                <div class="reminder-time">${icon} ${apt.time}</div>
+                <div class="reminder-details">
+                    ${recurBadge}
+                    ${getTitle(apt) ? `<div class="reminder-doctor">${getTitle(apt)}</div>` : ''}
+                    ${apt.description && apt.description !== getTitle(apt) ? `<div class="reminder-description">${apt.description}</div>` : ''}
+                    ${apt.location ? `<div class="reminder-location">${apt.location}</div>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+        return `<div class="reminders-day-group">
+            <div class="reminders-day-label">${label}</div>
+            ${cards}
+        </div>`;
+    }).join('');
+}
+
+function renderPastEvents() {
+    const list = document.getElementById('pastEvents');
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+
+    // Window: 7 days ago → yesterday
+    const weekAgo = new Date(todayStart);
+    weekAgo.setDate(todayStart.getDate() - 7);
+    const yesterday = new Date(todayStart);
+    yesterday.setDate(todayStart.getDate() - 1);
+    yesterday.setHours(23, 59, 59, 999);
+
+    const expanded = expandAppointments(appointments, weekAgo, yesterday)
+        .filter(apt => apt.date < formatDateStr(todayStart))
+        .sort((a, b) => b.date.localeCompare(a.date) || a.time.localeCompare(b.time));
+
+    if (expanded.length === 0) {
+        list.innerHTML = '<div class="no-reminders">Nenhum evento na última semana</div>';
+        return;
+    }
+
+    const byDate = {};
+    for (const apt of expanded) {
+        if (!byDate[apt.date]) byDate[apt.date] = [];
+        byDate[apt.date].push(apt);
+    }
+
+    const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    list.innerHTML = Object.entries(byDate).map(([date, apts]) => {
+        const d = new Date(date + 'T00:00:00');
+        const label = `${WEEKDAYS_PT[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        const cards = apts.map(apt => {
+            const isReminder = apt.type === 'reminder';
+            const isRecurring = apt._recurring;
+            const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
+            const cardClass = `reminder-card past-event${isRecurring ? ' recurring' : (isReminder ? ' reminder-type' : '')}`;
             const recurBadge = isRecurring
                 ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
                 : '';
