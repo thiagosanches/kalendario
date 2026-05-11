@@ -2,7 +2,14 @@
 
 A **multi-user event scheduler** with a Telegram bot for managing events and a static web app for viewing them on any device.
 
+## Web View
+
 <img width="1276" height="1163" alt="image" src="https://github.com/user-attachments/assets/136af7cc-038b-4919-ba30-2434973b7f68" />
+
+## Telegram View
+
+<img width="478" height="322" alt="image" src="https://github.com/user-attachments/assets/47fcc4c1-18ac-4601-ab6c-5add916fae3b" />
+
 
 ## 🌟 Key Features
 
