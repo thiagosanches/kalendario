@@ -644,6 +644,57 @@ header h1 {
     transition: color 0.3s ease;
 }
 
+/* ── Recurring event styles ────────────────────────────────────────────── */
+
+/* Month calendar: day cell with recurring occurrences gets an orange border */
+.calendar-day.has-recurring {
+    border-color: #f7971e;
+}
+
+/* Month calendar: indicator dot turns amber for recurring days */
+.appointment-indicator.recurring-indicator {
+    background: #f7971e;
+}
+
+/* 7-day view: recurring card gets a purple gradient */
+.day-appointment.recurring {
+    background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+}
+
+/* Appointments list: recurring card gets an amber/gold gradient */
+.appointment-card.recurring-card {
+    background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+    box-shadow: 0 5px 15px rgba(247, 151, 30, 0.3);
+    color: white;
+}
+
+.appointment-card.recurring-card:hover {
+    box-shadow: 0 10px 25px rgba(247, 151, 30, 0.4);
+}
+
+/* Today's reminders: recurring entries get a purple left border */
+.reminder-card.recurring {
+    border-left: 4px solid #a18cd1;
+}
+
+.reminder-card.recurring .reminder-time {
+    background: #a18cd1;
+}
+
+/* Recurrence frequency badge shown inside cards */
+.recurrence-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    letter-spacing: 0.02em;
+}
+
+/* ───────────────────────────────────────────────────────────────────────── */
+
 /* Tablet Optimizations */
 @media (max-width: 1200px) {
     .main-content {
