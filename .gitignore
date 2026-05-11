@@ -219,4 +219,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-./data/
+# Data folder for storing user data, logs, or any other generated files that should not be committed to version control.
+data/
