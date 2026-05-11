@@ -954,16 +954,17 @@ CONTEXTO TEMPORAL:
 
 Extraia as seguintes informações:
 - data (formato AAAA-MM-DD)
-- hora (formato HH:MM, aceite também "14h", "14h30", "2 da tarde")
+- hora (formato HH:MM, aceite também "14h", "14h30", "2 da tarde", "três e meia da tarde" = 15:30)
 - tipo (appointment para eventos/compromissos, reminder para lembretes)
-- título (título curto do evento, deixe vazio se for lembrete simples)
-- descrição (resumo do compromisso)
+- doctor: título curto do evento — SEMPRE preencha com o assunto principal (ex: "Reunião com Donald Trump", "Academia", "Consulta médica"). NUNCA deixe vazio se houver um assunto na mensagem.
+- description: descrição completa do compromisso com todos os detalhes relevantes mencionados. Se não houver detalhes extras além do título, repita o título aqui.
 - local/observação
 
 EXEMPLOS:
-- "reunião com o cliente dia 15 de março às 14h" → use ano {current_year}
-- "lembrete para ligar para o banco amanhã às 8h" → calcule data de amanhã
-- "academia na próxima terça às 10h30" → calcule a próxima terça
+- "reunião com o cliente dia 15 de março às 14h" → doctor: "Reunião com o cliente", description: "Reunião com o cliente", use ano {current_year}
+- "reunião semanal com Donald Trump às três e meia da tarde, começando na quinta-feira" → doctor: "Reunião com Donald Trump", description: "Reunião semanal com Donald Trump", time: "15:30", próxima quinta como date, recurrence: "weekly"
+- "lembrete para ligar para o banco amanhã às 8h" → doctor: "Ligar para o banco", description: "Ligar para o banco", calcule data de amanhã
+- "academia na próxima terça às 10h30" → doctor: "Academia", description: "Academia", calcule a próxima terça
 
 EVENTOS RECORRENTES:
 Se o usuário mencionar recorrência (toda semana, todo mês, semanalmente, mensalmente, toda segunda-feira, toda quinta-feira, etc.), inclua o campo "recurrence":
