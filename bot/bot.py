@@ -16,6 +16,84 @@ from openai import OpenAI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+import calendar
+
+
+# ---------------------------------------------------------------------------
+# Recurrence helpers
+# ---------------------------------------------------------------------------
+
+FREQ_LABELS = {
+    'weekly':   'semanal',
+    'biweekly': 'quinzenal',
+    'monthly':  'mensal',
+    'yearly':   'anual',
+}
+
+FREQ_ALIASES = {
+    'semanal': 'weekly', 'semana': 'weekly', 'semanalmente': 'weekly', 'weekly': 'weekly',
+    'toda semana': 'weekly', 'todo semana': 'weekly',
+    'quinzenal': 'biweekly', 'quinzenalmente': 'biweekly', 'biweekly': 'biweekly',
+    'a cada duas semanas': 'biweekly', 'duas semanas': 'biweekly',
+    'mensal': 'monthly', 'mensalmente': 'monthly', 'monthly': 'monthly',
+    'todo mês': 'monthly', 'todo mes': 'monthly', 'todo o mês': 'monthly',
+    'anual': 'yearly', 'anualmente': 'yearly', 'yearly': 'yearly',
+    'todo ano': 'yearly', 'todo o ano': 'yearly',
+}
+
+
+def _add_months(dt, n):
+    """Add n months to a datetime, clamping to the last day of the target month."""
+    month = dt.month - 1 + n
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    last_day = calendar.monthrange(year, month)[1]
+    return dt.replace(year=year, month=month, day=min(dt.day, last_day))
+
+
+def get_recurrence_end(start: datetime, frequency: str) -> datetime:
+    """Return the end date for a recurring rule (1 year ahead, 2 for yearly)."""
+    if frequency == 'yearly':
+        return start.replace(year=start.year + 2)
+    return _add_months(start, 12)
+
+
+def iter_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = None):
+    """
+    Yield (occurrence_date_str, time_str) for a recurring appointment rule
+    within the optional [from_dt, to_dt] window.
+    Non-recurring entries yield their single (date, time) tuple.
+    """
+    frequency = apt.get('recurrence')
+    if not frequency:
+        yield apt['date'], apt['time']
+        return
+
+    start = datetime.strptime(f"{apt['date']} {apt['time']}", '%Y-%m-%d %H:%M')
+    end_str = apt.get('recurrence_end')
+    # Use end-of-day so occurrences on the end date itself are included
+    if end_str:
+        end = datetime.strptime(end_str, '%Y-%m-%d').replace(hour=23, minute=59)
+    else:
+        end = get_recurrence_end(start, frequency).replace(hour=23, minute=59)
+
+    current = start
+    while current <= end:
+        if (from_dt is None or current >= from_dt) and (to_dt is None or current <= to_dt):
+            yield current.strftime('%Y-%m-%d'), apt['time']
+        if frequency == 'weekly':
+            current += timedelta(weeks=1)
+        elif frequency == 'biweekly':
+            current += timedelta(weeks=2)
+        elif frequency == 'monthly':
+            current = _add_months(current, 1)
+        elif frequency == 'yearly':
+            current = current.replace(year=current.year + 1)
+        else:
+            break
+
+
+# ---------------------------------------------------------------------------
 # Configuration
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -155,11 +233,22 @@ def save_sent_reminder(appointment_id, reminder_type):
     
     return True
 
-def was_reminder_sent(appointment_id, reminder_type):
-    """Verifica se um lembrete já foi enviado"""
+def was_reminder_sent(appointment_id, occurrence_date, reminder_type):
+    """Verifica se um lembrete já foi enviado para uma ocorrência específica"""
     data = load_sent_reminders()
-    reminder_key = f"{appointment_id}_{reminder_type}"
+    reminder_key = f"{appointment_id}_{occurrence_date}_{reminder_type}"
     return reminder_key in data['reminders']
+
+
+def save_sent_reminder_occurrence(appointment_id, occurrence_date, reminder_type):
+    """Salva registro de lembrete enviado para uma ocorrência específica"""
+    data = load_sent_reminders()
+    reminder_key = f"{appointment_id}_{occurrence_date}_{reminder_type}"
+    if reminder_key not in data['reminders']:
+        data['reminders'].append(reminder_key)
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(SENT_REMINDERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
 def parse_flexible_date(date_str):
     """
@@ -251,8 +340,10 @@ Bem-vindo ao Kalendario, {user_name}! 🏥
 Comandos:
 /add - Adicionar uma nova consulta
 /reminder - Adicionar um lembrete (medicamento, exame, etc.)
+/addrec - Adicionar compromisso recorrente
 /list - Listar todas as suas consultas e lembretes
 /delete - Excluir uma consulta/lembrete por ID
+/delrec - Excluir uma série recorrente por ID
 /test - Testar se o bot está enviando mensagens
 /help - Mostrar esta mensagem de ajuda
 
@@ -512,44 +603,183 @@ async def add_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"❌ Exception in add_reminder: {e}")
         await update.message.reply_text(f"❌ Erro ao adicionar lembrete: {str(e)}")
 
+async def add_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Adiciona um compromisso recorrente: /addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL"""
+    print(f"🔁 /addrec command received from user {update.effective_user.id}")
+
+    if not await check_authorization(update, context):
+        return
+    if not await rate_limit_check(update, context):
+        return
+
+    text = update.message.text.replace('/addrec', '').strip()
+    if not text:
+        await update.message.reply_text(
+            "Formato: /addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL\n\n"
+            "Frequências aceitas: semanal, quinzenal, mensal, anual\n\n"
+            "Exemplo: /addrec 15/05 10:00 | mensal | Dr. Silva | Retorno | Sala 3"
+        )
+        return
+
+    parts = [p.strip() for p in text.split('|')]
+    if len(parts) < 3:
+        await update.message.reply_text(
+            "Formato inválido. Use:\n"
+            "/addrec DATA HORA | FREQ | MÉDICO | DESCRIÇÃO | LOCAL"
+        )
+        return
+
+    try:
+        datetime_parts = parts[0].split()
+        if len(datetime_parts) < 2:
+            await update.message.reply_text("Forneça data e hora.")
+            return
+
+        date_str = parse_flexible_date(datetime_parts[0])
+        time_str = datetime_parts[1]
+        datetime.strptime(time_str, '%H:%M')
+
+        freq_input = parts[1].lower().strip()
+        frequency = FREQ_ALIASES.get(freq_input)
+        if not frequency:
+            await update.message.reply_text(
+                f"Frequência '{freq_input}' inválida.\n"
+                "Use: semanal, quinzenal, mensal, anual"
+            )
+            return
+
+        doctor = parts[2] if len(parts) > 2 else ""
+        description = parts[3] if len(parts) > 3 else "Compromisso recorrente"
+        location = parts[4] if len(parts) > 4 else ""
+
+        start_dt = datetime.strptime(f"{date_str} {time_str}", '%Y-%m-%d %H:%M')
+        recurrence_end = get_recurrence_end(start_dt, frequency).strftime('%Y-%m-%d')
+
+        data = load_appointments()
+        appointment_id = max([a.get('id', 0) for a in data['appointments']], default=0) + 1
+
+        new_entry = {
+            "id": appointment_id,
+            "user_id": update.effective_user.id,
+            "username": update.effective_user.username or update.effective_user.first_name or "Usuário",
+            "date": date_str,
+            "time": time_str,
+            "doctor": doctor,
+            "description": description,
+            "location": location,
+            "type": "appointment",
+            "recurrence": frequency,
+            "recurrence_end": recurrence_end,
+            "created_at": datetime.now().isoformat()
+        }
+
+        data['appointments'].append(new_entry)
+        save_appointments(data)
+
+        freq_label = FREQ_LABELS[frequency]
+        await update.message.reply_text(
+            f"🔁 Compromisso recorrente adicionado!\n"
+            f"ID: {appointment_id}\n"
+            f"Início: {date_str} às {time_str}\n"
+            f"Frequência: {freq_label}\n"
+            f"Médico: {doctor}\n"
+            f"Descrição: {description}\n"
+            f"Válido até: {recurrence_end}\n\n"
+            f"Para excluir esta série: /delrec {appointment_id}"
+        )
+        print(f"✅ Recurring entry saved: ID {appointment_id}, freq={frequency}, start={date_str}")
+
+    except ValueError as e:
+        await update.message.reply_text(f"❌ Erro: {e}")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erro ao adicionar recorrente: {e}")
+
+
+async def delete_recurring(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Exclui uma regra recorrente inteira por ID: /delrec <id>"""
+    if not await check_authorization(update, context):
+        return
+
+    user_id = update.effective_user.id
+    text = update.message.text.replace('/delrec', '').strip()
+    if not text:
+        await update.message.reply_text("Use: /delrec <id>\nVeja o ID com /list")
+        return
+
+    try:
+        appointment_id = int(text)
+    except ValueError:
+        await update.message.reply_text("ID inválido. Forneça um número.")
+        return
+
+    data = load_appointments()
+    target = next((a for a in data['appointments'] if a['id'] == appointment_id), None)
+
+    if not target:
+        await update.message.reply_text(f"Item com ID {appointment_id} não encontrado.")
+        return
+    if target.get('user_id') != user_id:
+        await update.message.reply_text("❌ Você não pode excluir este item.")
+        return
+    if not target.get('recurrence'):
+        await update.message.reply_text("Este item não é recorrente. Use /delete para excluí-lo.")
+        return
+
+    data['appointments'] = [a for a in data['appointments'] if a['id'] != appointment_id]
+    save_appointments(data)
+    await update.message.reply_text(f"✅ Série recorrente ID {appointment_id} excluída com sucesso!")
+
+
 async def list_appointments(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Lista todas as consultas e lembretes do usuário"""
     if not await check_authorization(update, context):
         return
-    
+
     try:
         user_id = update.effective_user.id
         print(f"📋 /list command received from user {user_id}")
-        
+
         data = load_appointments()
         all_appointments = data.get('appointments', [])
-        
-        # Filter appointments for this user
-        appointments = [apt for apt in all_appointments if apt.get('user_id') == user_id]
-        
-        if not appointments:
+        user_appointments = [apt for apt in all_appointments if apt.get('user_id') == user_id]
+
+        if not user_appointments:
             await update.message.reply_text("Você ainda não tem consultas ou lembretes cadastrados.\n\nUse /add ou /reminder para adicionar!")
             print(f"ℹ️  User {user_id} has no appointments yet")
             return
-        
-        # Sort by date and time
-        appointments.sort(key=lambda x: (x['date'], x['time']))
-        
+
+        now = datetime.now()
+        # Build a flat list of (occurrence_datetime, apt, occurrence_date_str)
+        rows = []
+        for apt in user_appointments:
+            for occ_date, occ_time in iter_occurrences(apt, from_dt=now):
+                occ_dt = datetime.strptime(f"{occ_date} {occ_time}", '%Y-%m-%d %H:%M')
+                rows.append((occ_dt, apt, occ_date))
+
+        if not rows:
+            await update.message.reply_text("Sem compromissos futuros.")
+            return
+
+        rows.sort(key=lambda x: x[0])
+        # Show next 20 occurrences to avoid Telegram message length limits
+        rows = rows[:20]
+
         message = "📋 Suas Consultas e Lembretes:\n\n"
-        for apt in appointments:
+        for occ_dt, apt, occ_date in rows:
             item_type = "🏥 Consulta" if apt.get('type') == 'appointment' else "⏰ Lembrete"
-            message += f"{item_type} - ID: {apt['id']}\n"
-            message += f"Data: {apt['date']} às {apt['time']}\n"
+            recur_tag = f" 🔁{FREQ_LABELS.get(apt['recurrence'], '')}" if apt.get('recurrence') else ""
+            message += f"{item_type}{recur_tag} - ID: {apt['id']}\n"
+            message += f"Data: {occ_date} às {apt['time']}\n"
             if apt.get('doctor'):
                 message += f"Médico: {apt['doctor']}\n"
             message += f"Descrição: {apt['description']}\n"
             if apt.get('location'):
                 message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
             message += "\n"
-        
+
         await update.message.reply_text(message)
-        print(f"✅ List sent to user {user_id} ({len(appointments)} items)")
-        
+        print(f"✅ List sent to user {user_id} ({len(rows)} items)")
+
     except Exception as e:
         print(f"❌ Exception in list_appointments for user {update.effective_user.id}: {e}")
         await update.message.reply_text(f"Erro ao listar consultas: {str(e)}")
@@ -729,8 +959,20 @@ EXEMPLOS:
 - "lembrete para tomar remédio amanhã às 8h" → calcule data de amanhã
 - "dentista na próxima terça às 10h30" → calcule a próxima terça
 
+EVENTOS RECORRENTES:
+Se o usuário mencionar recorrência (toda semana, todo mês, semanalmente, mensalmente, toda segunda-feira, toda quinta-feira, etc.), inclua o campo "recurrence":
+- "toda semana" / "semanalmente" / "toda <dia da semana>" → "weekly"
+- "quinzenalmente" / "a cada duas semanas" → "biweekly"
+- "todo mês" / "mensalmente" / "todo dia X" → "monthly"
+- "todo ano" / "anualmente" → "yearly"
+Se não houver recorrência, omita o campo "recurrence".
+
+QUANDO HÁ RECORRÊNCIA E DIA DA SEMANA:
+- "toda quinta-feira" com data atual {current_date} → calcule a próxima quinta-feira como "date"
+- "toda terça às 10h" → próxima terça como "date"
+
 Retorne APENAS um JSON no formato:
-{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Dr. Nome", "description": "texto", "location": "local"}}
+{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Dr. Nome", "description": "texto", "location": "local", "recurrence": "weekly"}}
 
 Se não conseguir extrair a data/hora, use valores vazios."""
 
@@ -756,8 +998,11 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         # Load existing appointments
         data = load_appointments()
         appointment_id = max([apt.get('id', 0) for apt in data['appointments']], default=0) + 1
-        
-        # Create new entry
+
+        recurrence = parsed_data.get('recurrence', '').lower() or None
+        if recurrence and recurrence not in FREQ_LABELS:
+            recurrence = None  # ignore unknown values from GPT
+
         new_entry = {
             "id": appointment_id,
             "user_id": update.effective_user.id,
@@ -769,21 +1014,30 @@ Se não conseguir extrair a data/hora, use valores vazios."""
             "type": parsed_data.get('type', 'appointment'),
             "created_at": datetime.now().isoformat()
         }
-        
+
+        if recurrence:
+            start_dt = datetime.strptime(f"{new_entry['date']} {new_entry['time']}", '%Y-%m-%d %H:%M')
+            new_entry['recurrence'] = recurrence
+            new_entry['recurrence_end'] = get_recurrence_end(start_dt, recurrence).strftime('%Y-%m-%d')
+
         data['appointments'].append(new_entry)
         save_appointments(data)
-        
+
         # Send confirmation
         item_type = "🏥 Consulta" if new_entry['type'] == 'appointment' else "⏰ Lembrete"
         confirmation = f"✅ {item_type} adicionado com sucesso!\n\n"
         confirmation += f"ID: {appointment_id}\n"
         confirmation += f"Data: {new_entry['date']} às {new_entry['time']}\n"
+        if recurrence:
+            confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]}\n"
+            confirmation += f"Válido até: {new_entry['recurrence_end']}\n"
+            confirmation += f"Para excluir a série: /delrec {appointment_id}\n"
         if new_entry['doctor']:
             confirmation += f"Médico: {new_entry['doctor']}\n"
         confirmation += f"Descrição: {new_entry['description']}\n"
         if new_entry['location']:
             confirmation += f"{'Local' if new_entry['type'] == 'appointment' else 'Observação'}: {new_entry['location']}"
-        
+
         await update.message.reply_text(confirmation)
         
     except Exception as e:
@@ -819,48 +1073,54 @@ async def check_and_send_reminders():
                 if not user_id:
                     continue
                 
-                # Parse appointment datetime
+                # Parse base appointment datetime
                 apt_datetime = datetime.strptime(f"{apt['date']} {apt['time']}", '%Y-%m-%d %H:%M')
-                
-                # Skip past appointments
-                if apt_datetime <= now:
+
+                # Skip entries with no future occurrences (non-recurring past dates)
+                if not apt.get('recurrence') and apt_datetime <= now:
                     continue
                 
-                time_until = apt_datetime - now
                 apt_id = apt['id']
                 item_type = "🏥 Consulta" if apt.get('type') == 'appointment' else "⏰ Lembrete"
-                
-                # Check for 24-hour reminder
-                if timedelta(hours=23, minutes=50) <= time_until <= timedelta(hours=24, minutes=10):
-                    if not was_reminder_sent(apt_id, '24h'):
-                        message = f"🔔 {item_type} AMANHÃ!\n\n"
-                        message += f"Data: {apt_datetime.strftime('%d/%m/%Y')} às {apt['time']}\n"
-                        if apt.get('doctor'):
-                            message += f"Médico: {apt['doctor']}\n"
-                        message += f"Descrição: {apt['description']}\n"
-                        if apt.get('location'):
-                            message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
-                        message += f"\n⏰ Faltam aproximadamente 24 horas!"
-                        
-                        await app_instance.bot.send_message(chat_id=user_id, text=message)
-                        save_sent_reminder(apt_id, '24h')
-                        print(f"Sent 24h reminder for appointment {apt_id} to user {user_id}")
-                
-                # Check for 2-hour reminder
-                elif timedelta(hours=1, minutes=50) <= time_until <= timedelta(hours=2, minutes=10):
-                    if not was_reminder_sent(apt_id, '2h'):
-                        message = f"🔔 {item_type} EM 2 HORAS!\n\n"
-                        message += f"Data: HOJE às {apt['time']}\n"
-                        if apt.get('doctor'):
-                            message += f"Médico: {apt['doctor']}\n"
-                        message += f"Descrição: {apt['description']}\n"
-                        if apt.get('location'):
-                            message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
-                        message += f"\n⏰ Faltam aproximadamente 2 horas!"
-                        
-                        await app_instance.bot.send_message(chat_id=user_id, text=message)
-                        save_sent_reminder(apt_id, '2h')
-                        print(f"Sent 2h reminder for appointment {apt_id} to user {user_id}")
+
+                # Iterate over all upcoming occurrences of this entry
+                window_start = now - timedelta(hours=24, minutes=11)
+                window_end = now + timedelta(hours=24, minutes=11)
+                for occ_date, occ_time in iter_occurrences(apt, from_dt=window_start, to_dt=window_end):
+                    occ_dt = datetime.strptime(f"{occ_date} {occ_time}", '%Y-%m-%d %H:%M')
+                    if occ_dt <= now:
+                        continue
+                    time_until = occ_dt - now
+
+                    # Check for 24-hour reminder
+                    if timedelta(hours=23, minutes=50) <= time_until <= timedelta(hours=24, minutes=10):
+                        if not was_reminder_sent(apt_id, occ_date, '24h'):
+                            message = f"🔔 {item_type} AMANHÃ!\n\n"
+                            message += f"Data: {occ_dt.strftime('%d/%m/%Y')} às {occ_time}\n"
+                            if apt.get('doctor'):
+                                message += f"Médico: {apt['doctor']}\n"
+                            message += f"Descrição: {apt['description']}\n"
+                            if apt.get('location'):
+                                message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
+                            message += f"\n⏰ Faltam aproximadamente 24 horas!"
+                            await app_instance.bot.send_message(chat_id=user_id, text=message)
+                            save_sent_reminder_occurrence(apt_id, occ_date, '24h')
+                            print(f"Sent 24h reminder for appointment {apt_id} ({occ_date}) to user {user_id}")
+
+                    # Check for 2-hour reminder
+                    elif timedelta(hours=1, minutes=50) <= time_until <= timedelta(hours=2, minutes=10):
+                        if not was_reminder_sent(apt_id, occ_date, '2h'):
+                            message = f"🔔 {item_type} EM 2 HORAS!\n\n"
+                            message += f"Data: HOJE às {occ_time}\n"
+                            if apt.get('doctor'):
+                                message += f"Médico: {apt['doctor']}\n"
+                            message += f"Descrição: {apt['description']}\n"
+                            if apt.get('location'):
+                                message += f"{'Local' if apt.get('type') == 'appointment' else 'Observação'}: {apt['location']}\n"
+                            message += f"\n⏰ Faltam aproximadamente 2 horas!"
+                            await app_instance.bot.send_message(chat_id=user_id, text=message)
+                            save_sent_reminder_occurrence(apt_id, occ_date, '2h')
+                            print(f"Sent 2h reminder for appointment {apt_id} ({occ_date}) to user {user_id}")
                         
             except Exception as e:
                 print(f"Error processing appointment {apt.get('id')}: {e}")
@@ -901,6 +1161,8 @@ def main():
     application.add_handler(CommandHandler("reminder", add_reminder))
     application.add_handler(CommandHandler("list", list_appointments))
     application.add_handler(CommandHandler("delete", delete_appointment))
+    application.add_handler(CommandHandler("addrec", add_recurring))
+    application.add_handler(CommandHandler("delrec", delete_recurring))
     application.add_handler(CommandHandler("test", test_notification))
     
     # Register voice message handler
