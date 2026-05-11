@@ -1,5 +1,7 @@
 # Kalendario
 
+[![Tests](https://github.com/thiagosanches/kalendario/actions/workflows/tests.yml/badge.svg)](https://github.com/thiagosanches/kalendario/actions/workflows/tests.yml)
+
 A **multi-user event scheduler** with a Telegram bot for managing events and a static web app for viewing them on any device.
 
 ## Web View
