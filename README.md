@@ -24,18 +24,27 @@ A **multi-user event scheduler** with a Telegram bot for managing events and a s
 
 ## Project Structure
 
-```
+```text
 kalendario/
-├── bot/                      # Telegram bot
-│   ├── bot.py               # Bot implementation
-│   ├── test_recurring.py    # Unit tests (45 tests)
-│   └── requirements.txt     # Python dependencies
-├── web/                      # Web application
-│   ├── index.html           # Main HTML
-│   ├── app.js               # JavaScript logic
-│   └── styles.css           # Styling
-└── data/                     # JSON data storage
-    └── appointments.json    # Appointments database
+├── bot/                         # Telegram bot
+│   ├── bot.py                   # Entry point (thin)
+│   ├── config.py                # Env vars, OpenAI client, rate-limit state
+│   ├── recurrence.py            # Frequency constants + occurrence generator
+│   ├── storage.py               # JSON persistence (appointments + reminders)
+│   ├── date_utils.py            # Flexible date parsing
+│   ├── middleware.py            # Auth + rate-limit checks
+│   ├── reminders.py             # APScheduler 24 h / 2 h dispatcher
+│   ├── handlers/
+│   │   ├── commands.py          # All 9 slash-command handlers
+│   │   └── voice.py             # Whisper + GPT-4o-mini voice handler
+│   ├── test_recurring.py        # Unit tests (47 tests)
+│   └── requirements.txt         # Python dependencies
+├── web/                         # Web application
+│   ├── index.html               # Main HTML
+│   ├── app.js                   # JavaScript logic
+│   └── styles.css               # Styling
+└── data/                        # JSON data storage
+    └── appointments.json        # Appointments database
 ```
 
 ## Features
@@ -111,21 +120,21 @@ docker-compose up
 
 ```bash
 cd bot
-python3 -m pytest test_recurring.py -v
+python3 -m pytest test_recurring.py -v  # 47 tests
 ```
 
 ## Using the Telegram Bot
 
 ### Commands
 
-| Command | Description |
-|---|---|
-| `/start` | Welcome message |
-| `/add DATE TIME \| TITLE \| DESCRIPTION \| LOCATION` | Add a one-time event |
-| `/addrec DATE TIME \| FREQ \| TITLE \| DESCRIPTION \| LOCATION` | Add a recurring event |
-| `/list` | List your upcoming appointments |
-| `/delete ID` | Delete a one-time appointment |
-| `/delrec ID` | Delete an entire recurring series |
+| Command                                                         | Description                       |
+| --------------------------------------------------------------- | --------------------------------- |
+| `/start`                                                        | Welcome message                   |
+| `/add DATE TIME \| TITLE \| DESCRIPTION \| LOCATION`            | Add a one-time event              |
+| `/addrec DATE TIME \| FREQ \| TITLE \| DESCRIPTION \| LOCATION` | Add a recurring event             |
+| `/list`                                                         | List your upcoming appointments   |
+| `/delete ID`                                                    | Delete a one-time appointment     |
+| `/delrec ID`                                                    | Delete an entire recurring series |
 
 **Frequency values for `/addrec`:** `semanal`, `quinzenal`, `mensal`, `anual`  
 (also accepted in English: `weekly`, `biweekly`, `monthly`, `yearly`)
