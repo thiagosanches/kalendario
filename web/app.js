@@ -153,9 +153,12 @@ function updateRefreshTime() {
 
 // Render view based on mode
 function renderView() {
+    const calSection = document.querySelector('.calendar-section');
     if (viewMode === 'month') {
+        calSection.classList.remove('fullwidth');
         renderMonthCalendar();
     } else {
+        calSection.classList.add('fullwidth');
         render7DaysView();
     }
 }
