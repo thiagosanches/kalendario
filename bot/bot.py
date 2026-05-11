@@ -24,6 +24,7 @@ import calendar
 # ---------------------------------------------------------------------------
 
 FREQ_LABELS = {
+    'daily':    'diário',
     'weekly':   'semanal',
     'biweekly': 'quinzenal',
     'monthly':  'mensal',
@@ -31,6 +32,8 @@ FREQ_LABELS = {
 }
 
 FREQ_ALIASES = {
+    'diário': 'daily', 'diario': 'daily', 'diariamente': 'daily', 'daily': 'daily',
+    'todo dia': 'daily', 'todos os dias': 'daily', 'todo o dia': 'daily', 'cada dia': 'daily',
     'semanal': 'weekly', 'semana': 'weekly', 'semanalmente': 'weekly', 'weekly': 'weekly',
     'toda semana': 'weekly', 'todo semana': 'weekly',
     'quinzenal': 'biweekly', 'quinzenalmente': 'biweekly', 'biweekly': 'biweekly',
@@ -78,7 +81,9 @@ def generate_occurrences(apt: dict, from_dt: datetime = None, to_dt: datetime = 
     while current <= end:
         if (from_dt is None or current >= from_dt) and (to_dt is None or current <= to_dt):
             yield current.strftime('%Y-%m-%d'), apt['time']
-        if frequency == 'weekly':
+        if frequency == 'daily':
+            current += timedelta(days=1)
+        elif frequency == 'weekly':
             current += timedelta(weeks=1)
         elif frequency == 'biweekly':
             current += timedelta(weeks=2)
@@ -963,23 +968,34 @@ Extraia as seguintes informações:
 EXEMPLOS:
 - "reunião com o cliente dia 15 de março às 14h" → doctor: "Reunião com o cliente", description: "Reunião com o cliente", use ano {current_year}
 - "reunião semanal com Donald Trump às três e meia da tarde, começando na quinta-feira" → doctor: "Reunião com Donald Trump", description: "Reunião semanal com Donald Trump", time: "15:30", próxima quinta como date, recurrence: "weekly"
+- "reunião com o Menine, todos os dias, por uma semana, às 13h30" → doctor: "Reunião com o Menine", recurrence: "daily", recurrence_end: 6 dias após date (uma semana = 7 ocorrências, end = start + 6 dias)
 - "lembrete para ligar para o banco amanhã às 8h" → doctor: "Ligar para o banco", description: "Ligar para o banco", calcule data de amanhã
 - "academia na próxima terça às 10h30" → doctor: "Academia", description: "Academia", calcule a próxima terça
 
 EVENTOS RECORRENTES:
 Se o usuário mencionar recorrência (toda semana, todo mês, semanalmente, mensalmente, toda segunda-feira, toda quinta-feira, etc.), inclua o campo "recurrence":
+- "todo dia" / "todos os dias" / "diariamente" → "daily"
 - "toda semana" / "semanalmente" / "toda <dia da semana>" → "weekly"
 - "quinzenalmente" / "a cada duas semanas" → "biweekly"
 - "todo mês" / "mensalmente" / "todo dia X" → "monthly"
 - "todo ano" / "anualmente" → "yearly"
 Se não houver recorrência, omita o campo "recurrence".
 
+DATA DE TÉRMINO DA RECORRÊNCIA:
+Se o usuário mencionar uma duração ou data de fim, inclua o campo "recurrence_end" (formato AAAA-MM-DD):
+- "por uma semana" → recurrence_end = date + 6 dias
+- "por 10 dias" → recurrence_end = date + 9 dias
+- "por um mês" → recurrence_end = date + 29 dias
+- "até dia 30 de maio" → recurrence_end = "2026-05-30"
+- "por 3 semanas" → recurrence_end = date + 20 dias
+Se não houver data de término, omita o campo "recurrence_end".
+
 QUANDO HÁ RECORRÊNCIA E DIA DA SEMANA:
 - "toda quinta-feira" com data atual {current_date} → calcule a próxima quinta-feira como "date"
 - "toda terça às 10h" → próxima terça como "date"
 
 Retorne APENAS um JSON no formato:
-{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Título do evento", "description": "texto", "location": "local", "recurrence": "weekly"}}
+{{"date": "AAAA-MM-DD", "time": "HH:MM", "type": "appointment", "doctor": "Título do evento", "description": "texto", "location": "local", "recurrence": "daily", "recurrence_end": "AAAA-MM-DD"}}
 
 Se não conseguir extrair a data/hora, use valores vazios."""
 
@@ -1024,7 +1040,9 @@ Se não conseguir extrair a data/hora, use valores vazios."""
 
         if recurrence:
             new_entry['recurrence'] = recurrence
-            # No recurrence_end stored → infinite series
+            recurrence_end = parsed_data.get('recurrence_end', '').strip() or None
+            if recurrence_end:
+                new_entry['recurrence_end'] = recurrence_end
 
         data['appointments'].append(new_entry)
         save_appointments(data)
@@ -1035,7 +1053,8 @@ Se não conseguir extrair a data/hora, use valores vazios."""
         confirmation += f"ID: {appointment_id}\n"
         confirmation += f"Data: {new_entry['date']} às {new_entry['time']}\n"
         if recurrence:
-            confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]} (sem data de término)\n"
+            end_label = f" até {new_entry['recurrence_end']}" if new_entry.get('recurrence_end') else " (sem data de término)"
+            confirmation += f"🔁 Recorrência: {FREQ_LABELS[recurrence]}{end_label}\n"
             confirmation += f"Para excluir a série: /delrec {appointment_id}\n"
         if new_entry['doctor']:
             confirmation += f"Título: {new_entry['doctor']}\n"

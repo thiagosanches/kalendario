@@ -136,6 +136,20 @@ class TestIterOccurrences(unittest.TestCase):
         # 14, 21, 28 May, 4 Jun = 4 occurrences
         self.assertEqual(len(result), 4)
 
+    # --- Daily ---
+    def test_daily_count(self):
+        apt = self._make_apt('2026-05-11', '13:30', 'daily',
+                             recurrence_end='2026-05-17')
+        result = list(generate_occurrences(apt))
+        # 11,12,13,14,15,16,17 May = 7 occurrences ("por uma semana")
+        self.assertEqual(len(result), 7)
+
+    def test_daily_days_apart(self):
+        apt = self._make_apt('2026-05-11', '13:30', 'daily',
+                             recurrence_end='2026-05-13')
+        dates = [r[0] for r in generate_occurrences(apt)]
+        self.assertEqual(dates, ['2026-05-11', '2026-05-12', '2026-05-13'])
+
     def test_weekly_days_apart(self):
         apt = self._make_apt('2026-05-14', '15:00', 'weekly',
                              recurrence_end='2026-05-28')
@@ -228,14 +242,18 @@ class TestFreqAliases(unittest.TestCase):
             ('anual', 'yearly'),
             ('toda semana', 'weekly'),
             ('todo m\u00eas', 'monthly'),
+            ('diário', 'daily'),
+            ('todos os dias', 'daily'),
+            ('diariamente', 'daily'),
         ]:
             self.assertEqual(FREQ_ALIASES.get(alias), expected, f"Alias '{alias}' failed")
 
     def test_all_freq_labels_present(self):
-        for key in ('weekly', 'biweekly', 'monthly', 'yearly'):
+        for key in ('daily', 'weekly', 'biweekly', 'monthly', 'yearly'):
             self.assertIn(key, FREQ_LABELS)
+
     def test_unknown_alias_returns_none(self):
-        self.assertIsNone(FREQ_ALIASES.get('diário'))
+        self.assertIsNone(FREQ_ALIASES.get('horariamente'))
         self.assertIsNone(FREQ_ALIASES.get(''))
 
 

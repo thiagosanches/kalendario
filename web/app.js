@@ -6,7 +6,7 @@ let viewMode = '7days'; // 'month' or '7days'
 let startDate = new Date(); // For 7-day view
 
 // Frequency labels in Portuguese
-const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quinzenal', monthly: 'Mensal', yearly: 'Anual' };
+const FREQ_LABELS = { daily: 'Diário', weekly: 'Semanal', biweekly: 'Quinzenal', monthly: 'Mensal', yearly: 'Anual' };
 
 // Format a Date object as YYYY-MM-DD
 function formatDateStr(d) {
@@ -47,7 +47,9 @@ function expandAppointments(apts, fromDate, toDate) {
             if (current >= fromDate) {
                 result.push({ ...apt, date: formatDateStr(current), _recurring: true });
             }
-            if (apt.recurrence === 'weekly') {
+            if (apt.recurrence === 'daily') {
+                current.setDate(current.getDate() + 1);
+            } else if (apt.recurrence === 'weekly') {
                 current.setDate(current.getDate() + 7);
             } else if (apt.recurrence === 'biweekly') {
                 current.setDate(current.getDate() + 14);
