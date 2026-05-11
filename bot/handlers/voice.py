@@ -55,13 +55,15 @@ Se o usuário mencionar recorrência, inclua o campo "recurrence":
 Se não houver recorrência, omita o campo "recurrence".
 
 DATA DE TÉRMINO DA RECORRÊNCIA:
-Se o usuário mencionar uma duração ou data de fim, inclua "recurrence_end" (formato AAAA-MM-DD):
+REGRA CRÍTICA: só inclua "recurrence_end" se o usuário mencionar EXPLICITAMENTE uma duração ou data de fim. Se não mencionou, NUNCA inclua "recurrence_end".
 - "por uma semana" → recurrence_end = date + 6 dias
 - "por 10 dias" → recurrence_end = date + 9 dias
 - "por um mês" → recurrence_end = date + 29 dias
 - "até dia 30 de maio" → recurrence_end = "2026-05-30"
 - "por 3 semanas" → recurrence_end = date + 20 dias
-Se não houver data de término, omita "recurrence_end".
+- "todo dia" / "todos os dias" SEM duração → NÃO inclua "recurrence_end"
+- "toda semana" SEM duração → NÃO inclua "recurrence_end"
+Se não houver data de término explícita na fala, OMITA "recurrence_end" completamente.
 
 QUANDO HÁ RECORRÊNCIA E DIA DA SEMANA:
 - "toda quinta-feira" com data atual {current_date} → calcule a próxima quinta-feira como "date"
