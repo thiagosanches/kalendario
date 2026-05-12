@@ -548,46 +548,36 @@ function renderPastEvents() {
         .sort((a, b) => b.date.localeCompare(a.date) || a.time.localeCompare(b.time));
 
     if (expanded.length === 0) {
-        list.innerHTML = '<div class="no-reminders">Nenhum evento na última semana</div>';
+        list.innerHTML = '<div class="no-appointments">Nenhum evento na última semana</div>';
         return;
     }
 
-    const byDate = {};
-    for (const apt of expanded) {
-        if (!byDate[apt.date]) byDate[apt.date] = [];
-        byDate[apt.date].push(apt);
-    }
+    list.innerHTML = expanded.map(apt => {
+        const aptDate = new Date(`${apt.date}T${apt.time}`);
+        const dateStr = aptDate.toLocaleDateString('pt-BR', { weekday: 'short', month: 'short', day: 'numeric' });
+        const isReminder = apt.type === 'reminder';
+        const isRecurring = apt._recurring;
+        const cardClass = isRecurring ? 'appointment-card recurring-card'
+            : (isReminder ? 'appointment-card reminder-card-style' : 'appointment-card');
+        const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
+        const recurBadge = isRecurring
+            ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
+            : '';
 
-    const WEEKDAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-    list.innerHTML = Object.entries(byDate).map(([date, apts]) => {
-        const d = new Date(date + 'T00:00:00');
-        const label = `${WEEKDAYS_PT[d.getDay()]}, ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-
-        const cards = apts.map(apt => {
-            const isReminder = apt.type === 'reminder';
-            const isRecurring = apt._recurring;
-            const icon = isRecurring ? '🔁' : (isReminder ? '⏰' : '📅');
-            const cardClass = `reminder-card past-event${isRecurring ? ' recurring' : (isReminder ? ' reminder-type' : '')}`;
-            const recurBadge = isRecurring
-                ? `<div class="recurrence-badge">🔁 ${FREQ_LABELS[apt.recurrence] || apt.recurrence}</div>`
-                : '';
-            return `
+        return `
             <div class="${cardClass}">
-                <div class="reminder-time">${icon} ${apt.time}</div>
-                <div class="reminder-details">
-                    ${recurBadge}
-                    ${getTitle(apt) ? `<div class="reminder-doctor">${getTitle(apt)}</div>` : ''}
-                    ${apt.description && apt.description !== getTitle(apt) ? `<div class="reminder-description">${apt.description}</div>` : ''}
-                    ${apt.location ? `<div class="reminder-location">${apt.location}</div>` : ''}
+                <div class="appointment-date">
+                    <div class="date-large">${dateStr}</div>
+                    <div class="time-large">${apt.time}</div>
                 </div>
-            </div>`;
-        }).join('');
-
-        return `<div class="reminders-day-group">
-            <div class="reminders-day-label">${label}</div>
-            ${cards}
-        </div>`;
+                <div class="appointment-details">
+                    ${recurBadge}
+                    ${getTitle(apt) ? `<div class="appointment-doctor">${getTitle(apt)}</div>` : ''}
+                    ${apt.description && apt.description !== getTitle(apt) ? `<div class="appointment-description">${icon} ${apt.description}</div>` : `<div class="appointment-description">${icon}</div>`}
+                    ${apt.location ? `<div class="appointment-location">📍 ${apt.location}</div>` : ''}
+                </div>
+            </div>
+        `;
     }).join('');
 }
 
