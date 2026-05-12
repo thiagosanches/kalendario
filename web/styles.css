@@ -202,6 +202,11 @@ header h1 {
     grid-row: 2 / 3;
 }
 
+.main-content.days7-mode .past-events-section {
+    grid-column: 1 / 3;
+    grid-row: 4 / 5;
+}
+
 .main-content.days7-mode .appointments-section {
     grid-column: 1 / 3;
     grid-row: 3 / 4;
@@ -331,6 +336,19 @@ header h1 {
 .reminders-section {
     grid-column: 2 / 3;
     grid-row: 1 / 2;
+}
+
+.past-events-section {
+    grid-column: 1 / 3;
+    grid-row: 3 / 4;
+}
+
+.past-events-section h2 {
+    font-size: 1.8rem;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    transition: color 0.3s ease;
+    font-weight: 700;
 }
 
 /* Appointments section below calendar */
