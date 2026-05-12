@@ -71,7 +71,6 @@ async function init() {
     await loadAppointments();
     renderView();
     renderAppointmentsList();
-    renderTodayReminders();
     renderPastEvents();
     updateRefreshTime();
     
@@ -149,7 +148,6 @@ async function refreshData() {
     await loadAppointments();
     renderView();
     renderAppointmentsList();
-    renderTodayReminders();
     renderPastEvents();
     updateRefreshTime();
 }
