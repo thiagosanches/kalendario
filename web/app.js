@@ -35,7 +35,8 @@ function expandAppointments(apts, fromDate, toDate) {
     const result = [];
     for (const apt of apts) {
         if (!apt.recurrence) {
-            result.push(apt);
+            const aptDate = new Date(apt.date + 'T00:00:00');
+            if (aptDate >= fromDate && aptDate <= toDate) result.push(apt);
             continue;
         }
         const recEnd = apt.recurrence_end
