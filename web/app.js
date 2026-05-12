@@ -84,6 +84,7 @@ async function init() {
         }
         renderView();
         renderAppointmentsList();
+        renderPastEvents();
     });
     
     document.getElementById('nextPeriod').addEventListener('click', () => {
@@ -94,6 +95,7 @@ async function init() {
         }
         renderView();
         renderAppointmentsList();
+        renderPastEvents();
     });
     
     document.getElementById('monthViewBtn').addEventListener('click', () => {
@@ -102,6 +104,7 @@ async function init() {
         document.getElementById('days15ViewBtn').classList.remove('active');
         renderView();
         renderAppointmentsList();
+        renderPastEvents();
     });
     
     document.getElementById('days15ViewBtn').addEventListener('click', () => {
@@ -111,6 +114,7 @@ async function init() {
         document.getElementById('monthViewBtn').classList.remove('active');
         renderView();
         renderAppointmentsList();
+        renderPastEvents();
     });
     
     // Manual refresh button
@@ -534,18 +538,25 @@ function renderTodayReminders() {
 
 function renderPastEvents() {
     const list = document.getElementById('pastEvents');
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
 
-    // Window: 7 days ago → yesterday
-    const weekAgo = new Date(todayStart);
-    weekAgo.setDate(todayStart.getDate() - 7);
-    const yesterday = new Date(todayStart);
-    yesterday.setDate(todayStart.getDate() - 1);
+    // Reference point: start of the current view window
+    let windowStart;
+    if (viewMode === 'month') {
+        windowStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1, 0, 0, 0);
+    } else {
+        windowStart = new Date(startDate);
+        windowStart.setHours(0, 0, 0, 0);
+    }
+
+    // Show 7 days before the current window
+    const weekAgo = new Date(windowStart);
+    weekAgo.setDate(windowStart.getDate() - 7);
+    const yesterday = new Date(windowStart);
+    yesterday.setDate(windowStart.getDate() - 1);
     yesterday.setHours(23, 59, 59, 999);
 
     const expanded = expandAppointments(appointments, weekAgo, yesterday)
-        .filter(apt => apt.date < formatDateStr(todayStart))
+        .filter(apt => apt.date < formatDateStr(windowStart))
         .sort((a, b) => b.date.localeCompare(a.date) || a.time.localeCompare(b.time));
 
     if (expanded.length === 0) {
